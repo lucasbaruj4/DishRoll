@@ -17,6 +17,8 @@ function AuthGate() {
   const [questionnaireStep, setQuestionnaireStep] = React.useState<
     'ingredients' | 'allergies' | 'cooking_level' | 'complete' | 'level' | null
   >(null);
+  const [hasSyncedInitialQuestionnaireRoute, setHasSyncedInitialQuestionnaireRoute] =
+    React.useState(false);
 
   React.useEffect(() => {
     const syncQuestionnaireStatus = async () => {
@@ -25,6 +27,7 @@ function AuthGate() {
       if (!session || !user) {
         setQuestionnaireDone(null);
         setQuestionnaireStep(null);
+        setHasSyncedInitialQuestionnaireRoute(false);
         return;
       }
 
@@ -48,15 +51,13 @@ function AuthGate() {
     if (session && questionnaireStep === null) return;
     const [firstSegment] = segments;
     const secondSegment = segments.slice(1, 2)[0];
-    const inAuthGroup = firstSegment === '(auth)';
     const thirdSegment = segments.slice(2, 3)[0];
+    const inAuthGroup = firstSegment === '(auth)';
     const isOnboarding =
       inAuthGroup &&
       (secondSegment === 'onboarding' ||
         secondSegment === 'kitchen' ||
         secondSegment === 'initial_questionaire');
-    const currentQuestionnaireSubroute =
-      secondSegment === 'initial_questionaire' ? thirdSegment : null;
 
     if (!session && !inAuthGroup) {
       router.replace('/(auth)/onboarding');
@@ -70,20 +71,43 @@ function AuthGate() {
           : questionnaireStep === 'cooking_level' || questionnaireStep === 'level'
             ? '/(auth)/initial_questionaire/cooking-level'
             : '/(auth)/initial_questionaire/ingredients';
+      const inInitialQuestionnaire =
+        inAuthGroup && secondSegment === 'initial_questionaire';
+      const inOnboarding = inAuthGroup && secondSegment === 'onboarding';
 
-      if (!isOnboarding) {
+      if (inOnboarding) {
+        // Allow users to back out to onboarding; re-entry will sync to persisted step.
+        if (hasSyncedInitialQuestionnaireRoute) {
+          setHasSyncedInitialQuestionnaireRoute(false);
+        }
+        return;
+      }
+
+      if (!inAuthGroup) {
         router.replace(target);
         return;
       }
 
-      if (
-        secondSegment === 'initial_questionaire' &&
-        ((target.endsWith('/ingredients') && currentQuestionnaireSubroute !== 'ingredients') ||
-          (target.endsWith('/allergies') && currentQuestionnaireSubroute !== 'allergies') ||
-          (target.endsWith('/cooking-level') &&
-            currentQuestionnaireSubroute !== 'cooking-level'))
-      ) {
-        router.replace(target);
+      if (!inInitialQuestionnaire) {
+        router.replace('/(auth)/onboarding');
+        return;
+      }
+
+      if (!hasSyncedInitialQuestionnaireRoute) {
+        const expectedSubroute = target.endsWith('/allergies')
+          ? 'allergies'
+          : target.endsWith('/cooking-level')
+            ? 'cooking-level'
+            : 'ingredients';
+        const isOnExpectedQuestionnaireStep =
+          secondSegment === 'initial_questionaire' && thirdSegment === expectedSubroute;
+
+        if (!isOnExpectedQuestionnaireStep) {
+          router.replace(target);
+          return;
+        }
+
+        setHasSyncedInitialQuestionnaireRoute(true);
       }
 
       return;
@@ -92,7 +116,15 @@ function AuthGate() {
     if (session && inAuthGroup && !isOnboarding) {
       router.replace('/(tabs)/inventory');
     }
-  }, [loading, session, questionnaireDone, questionnaireStep, segments, router]);
+  }, [
+    loading,
+    session,
+    questionnaireDone,
+    questionnaireStep,
+    segments,
+    router,
+    hasSyncedInitialQuestionnaireRoute,
+  ]);
 
   return null;
 }

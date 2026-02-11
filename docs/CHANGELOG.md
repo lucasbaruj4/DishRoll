@@ -19,6 +19,25 @@
 - Added normalized `cooking_level_catalog` (5-point scale) and implemented step 3 with a fixed-stop slider UI that saves selected level to user profile.
 - Fixed onboarding resume routing so incomplete users return to their saved questionnaire step instead of always restarting at ingredients.
 - Polished cooking-level slider interaction by locking page scroll during drag and fixing knob edge alignment at both track extremes.
+- Added explicit Back buttons to all `initial_questionaire` steps (ingredients, allergies/dislikes, cooking level).
+- Synced questionnaire progress state when navigating backward so resume returns to the correct previous step.
+- Confirmed multi-select questionnaire persistence uses delete-then-insert on every Continue for both `user_ingredients` (questionnaire source) and `user_dietary_restrictions`.
+- Tightened ingredient prefill in the questionnaire to only read rows with `source = 'questionnaire'`.
+- Replaced in-screen Back buttons with iOS-style header back controls for all questionnaire steps.
+- Fixed unreliable back navigation by routing header back actions directly to deterministic previous-step routes.
+- Adjusted questionnaire navigation to use deterministic `router.replace(...)` transitions for both forward and backward step moves.
+- Removed back-step profile rewrites that could incorrectly downgrade resume position from `cooking_level` to earlier steps.
+- Hid header back controls while a save request is in progress to prevent duplicate navigation actions.
+- Fixed root auth gate regression that forced users back to the persisted questionnaire step, which blocked intentional in-flow back navigation.
+- Updated questionnaire step navigation to use stack semantics (`push` forward, `back` backward) for native linear transition direction.
+- Added one-time initial questionnaire route sync on app bootstrap so reopen respects the persisted DB step without overriding in-flow back navigation.
+- Tightened auth gating for incomplete users so only `initial_questionaire/*` routes are allowed, preventing onboarding/login detours from breaking questionnaire back-stack expectations.
+- Updated questionnaire back flow to deterministic linear behavior: step 3 -> step 2 -> step 1 -> onboarding (no loop back to step 3).
+- Adjusted incomplete-user auth gating to allow staying on onboarding and only resume questionnaire when re-entering, using persisted DB step sync.
+- Updated onboarding CTA behavior for signed-in incomplete users to show `Resume setup` and route into questionnaire resume path.
+- Hid onboarding header (`Welcome`) to remove redundant back navigation from the intro screen.
+- Switched questionnaire back handlers to `dismissTo(...)` and configured `animationTypeForReplace: 'pop'` for questionnaire + onboarding routes to keep back-like iOS transitions on replace fallbacks.
+- Disabled iOS swipe-back gestures on questionnaire screens so navigation advances/returns only through explicit controls.
 
 ## 2026-02-09
 - Scaffolded Expo Router structure with auth and tab layouts.

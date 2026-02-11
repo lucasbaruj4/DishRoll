@@ -2,8 +2,10 @@ import * as React from 'react';
 import { Link } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Animated, ScrollView, Text, Pressable, View, useWindowDimensions } from 'react-native';
+import { useAuth } from '../../hooks/useAuth';
 
 export default function OnboardingScreen() {
+  const { session } = useAuth();
   const { width } = useWindowDimensions();
   const [page, setPage] = React.useState(0);
   const [carouselWidth, setCarouselWidth] = React.useState(width - 48);
@@ -243,28 +245,47 @@ export default function OnboardingScreen() {
         </View>
 
         <View style={{ gap: 12, marginTop: 6 }}>
-          <Link href="/(auth)/signup" asChild>
-            <Pressable
-              style={{
-                backgroundColor: '#f4f4f4',
-                paddingVertical: 12,
-                borderRadius: 14,
-                alignItems: 'center',
-              }}
-            >
-              <Text selectable style={{ color: '#050506', fontWeight: '600' }}>
-                Create account
-              </Text>
-            </Pressable>
-          </Link>
+          {session ? (
+            <Link href="/(auth)/initial_questionaire/ingredients" asChild>
+              <Pressable
+                style={{
+                  backgroundColor: '#f4f4f4',
+                  paddingVertical: 12,
+                  borderRadius: 14,
+                  alignItems: 'center',
+                }}
+              >
+                <Text selectable style={{ color: '#050506', fontWeight: '600' }}>
+                  Resume setup
+                </Text>
+              </Pressable>
+            </Link>
+          ) : (
+            <>
+              <Link href="/(auth)/signup" asChild>
+                <Pressable
+                  style={{
+                    backgroundColor: '#f4f4f4',
+                    paddingVertical: 12,
+                    borderRadius: 14,
+                    alignItems: 'center',
+                  }}
+                >
+                  <Text selectable style={{ color: '#050506', fontWeight: '600' }}>
+                    Create account
+                  </Text>
+                </Pressable>
+              </Link>
 
-          <Link href="/(auth)/login" asChild>
-            <Pressable style={{ alignItems: 'center' }}>
-              <Text selectable style={{ textDecorationLine: 'underline', color: '#f4f4f4' }}>
-                Already have an account? Log in
-              </Text>
-            </Pressable>
-          </Link>
+              <Link href="/(auth)/login" asChild>
+                <Pressable style={{ alignItems: 'center' }}>
+                  <Text selectable style={{ textDecorationLine: 'underline', color: '#f4f4f4' }}>
+                    Already have an account? Log in
+                  </Text>
+                </Pressable>
+              </Link>
+            </>
+          )}
         </View>
       </ScrollView>
     </View>

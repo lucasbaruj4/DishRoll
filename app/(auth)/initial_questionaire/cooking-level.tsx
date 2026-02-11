@@ -1,4 +1,5 @@
-import { useRouter } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
+import { HeaderBackButton } from '@react-navigation/elements';
 import {
   ActivityIndicator,
   Pressable,
@@ -102,6 +103,11 @@ export default function InitialLevelScreen() {
     }
   };
 
+  const handleBack = () => {
+    if (saving) return;
+    router.dismissTo('/(auth)/initial_questionaire/allergies');
+  };
+
   return (
     <ScrollView
       contentInsetAdjustmentBehavior="automatic"
@@ -109,6 +115,14 @@ export default function InitialLevelScreen() {
       style={{ backgroundColor: '#0b0b0f' }}
       contentContainerStyle={{ padding: 24, gap: 16, flexGrow: 1 }}
     >
+      <Stack.Screen
+        options={{
+          headerBackVisible: false,
+          headerLeft: () =>
+            saving ? null : <HeaderBackButton tintColor="#f4f4f4" onPress={handleBack} />,
+        }}
+      />
+
       <View style={{ gap: 8 }}>
         <Text selectable style={{ color: '#8f8f98', fontSize: 12, letterSpacing: 1.8 }}>
           STEP 3 OF 3

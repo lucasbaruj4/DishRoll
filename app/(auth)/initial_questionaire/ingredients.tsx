@@ -1,5 +1,6 @@
 import * as React from 'react';
-import { useRouter } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
+import { HeaderBackButton } from '@react-navigation/elements';
 import {
   ActivityIndicator,
   Pressable,
@@ -34,7 +35,8 @@ export default function InitialIngredientsScreen() {
         .from('user_ingredients')
         .select('catalog_id')
         .eq('user_id', user.id)
-        .eq('is_available', true);
+        .eq('is_available', true)
+        .eq('source', 'questionnaire');
 
       if (selectedError) {
         return;
@@ -90,6 +92,10 @@ export default function InitialIngredientsScreen() {
     }
   };
 
+  const handleBack = () => {
+    router.dismissTo('/(auth)/onboarding');
+  };
+
   return (
     <ScrollView
       contentInsetAdjustmentBehavior="automatic"
@@ -97,6 +103,14 @@ export default function InitialIngredientsScreen() {
       contentContainerStyle={{ padding: 24, gap: 16, flexGrow: 1 }}
       keyboardShouldPersistTaps="handled"
     >
+      <Stack.Screen
+        options={{
+          headerBackVisible: false,
+          headerLeft: () =>
+            saving ? null : <HeaderBackButton tintColor="#f4f4f4" onPress={handleBack} />,
+        }}
+      />
+
       <View style={{ gap: 8 }}>
         <Text selectable style={{ color: '#8f8f98', fontSize: 12, letterSpacing: 1.8 }}>
           STEP 1 OF 3
