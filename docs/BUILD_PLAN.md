@@ -1,5 +1,11 @@
 # Build Plan
 
+Progress (as of 2026-02-09)
+- Foundation: complete
+- Auth flow: complete (login/signup + protected routes)
+- Ingredient inventory: basic CRUD + availability toggle complete
+- Security baseline: RLS dev check wired, env secrets protected
+
 Skill Routing (apply when matching tasks appear)
 - `building-native-ui`: Any Expo Router structure, navigation, layout, UI components, animations, or native tabs.
 - `native-data-fetching`: Any network request, Supabase call, OpenAI call, auth token handling, caching, or offline behavior.
@@ -25,6 +31,7 @@ Deliverables
 2. Auth Flow
 1. Login/signup screens.
 1. Session persistence + protected routes.
+1. Onboarding screens (intro + kitchen selection).
 
 Skills
 - `building-native-ui` for auth screens and route protection.
@@ -33,6 +40,7 @@ Skills
 Acceptance
 - New user can sign up, log in, and is routed to tabs.
 - Session survives app reload.
+- Onboarding flow routes to signup and then kitchen selection.
 
 3. Ingredient Inventory
 1. CRUD ingredients.

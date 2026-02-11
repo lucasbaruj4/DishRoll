@@ -57,19 +57,20 @@ export default function InventoryScreen() {
   return (
     <ScrollView
       contentInsetAdjustmentBehavior="automatic"
-      contentContainerStyle={{ padding: 24, gap: 16 }}
+      style={{ backgroundColor: '#0b0b0f' }}
+      contentContainerStyle={{ padding: 24, gap: 16, flexGrow: 1 }}
     >
       <View style={{ gap: 6 }}>
-        <Text selectable style={{ fontSize: 20, fontWeight: '600' }}>
+        <Text selectable style={{ fontSize: 20, fontWeight: '600', color: '#f5f5f5' }}>
           Inventory
         </Text>
-        <Text selectable style={{ color: '#666' }}>
+        <Text selectable style={{ color: '#b3b3b3' }}>
           Track what you have on hand.
         </Text>
       </View>
 
       <View style={{ gap: 10 }}>
-        <Text selectable style={{ fontWeight: '600' }}>
+        <Text selectable style={{ fontWeight: '600', color: '#f5f5f5' }}>
           Add ingredient
         </Text>
         <TextInput
@@ -78,11 +79,13 @@ export default function InventoryScreen() {
           placeholder="Name (e.g. chicken)"
           style={{
             borderWidth: 1,
-            borderColor: '#ddd',
+            borderColor: '#24242b',
             borderRadius: 12,
             paddingHorizontal: 12,
             paddingVertical: 10,
+            color: '#f5f5f5',
           }}
+          placeholderTextColor="#6c6c75"
         />
         <TextInput
           value={quantity}
@@ -90,11 +93,13 @@ export default function InventoryScreen() {
           placeholder="Quantity (e.g. 2 lb)"
           style={{
             borderWidth: 1,
-            borderColor: '#ddd',
+            borderColor: '#24242b',
             borderRadius: 12,
             paddingHorizontal: 12,
             paddingVertical: 10,
+            color: '#f5f5f5',
           }}
+          placeholderTextColor="#6c6c75"
         />
         <TextInput
           value={category}
@@ -102,36 +107,38 @@ export default function InventoryScreen() {
           placeholder="Category (optional)"
           style={{
             borderWidth: 1,
-            borderColor: '#ddd',
+            borderColor: '#24242b',
             borderRadius: 12,
             paddingHorizontal: 12,
             paddingVertical: 10,
+            color: '#f5f5f5',
           }}
+          placeholderTextColor="#6c6c75"
         />
         <Pressable
           onPress={handleAdd}
           disabled={submitting}
           style={{
-            backgroundColor: submitting ? '#999' : '#111',
+            backgroundColor: submitting ? '#6c6c75' : '#f5f5f5',
             paddingVertical: 12,
             borderRadius: 12,
             alignItems: 'center',
           }}
         >
-          <Text selectable style={{ color: '#fff', fontWeight: '600' }}>
+          <Text selectable style={{ color: '#0b0b0f', fontWeight: '600' }}>
             {submitting ? 'Adding...' : 'Add ingredient'}
           </Text>
         </Pressable>
       </View>
 
-      {loading ? <Text selectable>Loading ingredients...</Text> : null}
+      {loading ? <Text selectable style={{ color: '#f5f5f5' }}>Loading ingredients...</Text> : null}
       {error ? (
-        <Text selectable style={{ color: '#b00020' }}>
+        <Text selectable style={{ color: '#ff6b6b' }}>
           {error}
         </Text>
       ) : null}
       {actionError ? (
-        <Text selectable style={{ color: '#b00020' }}>
+        <Text selectable style={{ color: '#ff6b6b' }}>
           {actionError}
         </Text>
       ) : null}
@@ -142,22 +149,23 @@ export default function InventoryScreen() {
             key={item.id}
             style={{
               borderWidth: 1,
-              borderColor: '#eee',
+              borderColor: '#24242b',
               borderRadius: 14,
               padding: 12,
               gap: 8,
+              backgroundColor: '#14141a',
             }}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
               <View style={{ gap: 4, flex: 1 }}>
-                <Text selectable style={{ fontSize: 16, fontWeight: '600' }}>
+                <Text selectable style={{ fontSize: 16, fontWeight: '600', color: '#f5f5f5' }}>
                   {item.name}
                 </Text>
                 {item.quantity ? (
-                  <Text selectable style={{ color: '#666' }}>{item.quantity}</Text>
+                  <Text selectable style={{ color: '#b3b3b3' }}>{item.quantity}</Text>
                 ) : null}
                 {item.category ? (
-                  <Text selectable style={{ color: '#666' }}>{item.category}</Text>
+                  <Text selectable style={{ color: '#b3b3b3' }}>{item.category}</Text>
                 ) : null}
               </View>
               <Switch
@@ -174,10 +182,10 @@ export default function InventoryScreen() {
                 paddingHorizontal: 10,
                 borderRadius: 10,
                 borderWidth: 1,
-                borderColor: '#ddd',
+                borderColor: '#24242b',
               }}
             >
-              <Text selectable style={{ color: '#444' }}>
+              <Text selectable style={{ color: '#f5f5f5' }}>
                 Delete
               </Text>
             </Pressable>
@@ -185,7 +193,7 @@ export default function InventoryScreen() {
         ))}
 
         {!loading && ingredients.length === 0 ? (
-          <Text selectable style={{ color: '#666' }}>
+          <Text selectable style={{ color: '#b3b3b3' }}>
             No ingredients yet. Add your first one above.
           </Text>
         ) : null}

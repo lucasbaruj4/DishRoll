@@ -26,20 +26,21 @@ export default function LoginScreen() {
   return (
     <ScrollView
       contentInsetAdjustmentBehavior="automatic"
-      contentContainerStyle={{ padding: 24, gap: 16 }}
+      style={{ backgroundColor: '#0b0b0f' }}
+      contentContainerStyle={{ padding: 24, gap: 16, flexGrow: 1 }}
     >
       <View style={{ gap: 8 }}>
-        <Text selectable style={{ fontSize: 24, fontWeight: '600' }}>
+        <Text selectable style={{ fontSize: 24, fontWeight: '600', color: '#f5f5f5' }}>
           Welcome back
         </Text>
-        <Text selectable style={{ color: '#666' }}>
+        <Text selectable style={{ color: '#b3b3b3' }}>
           Sign in to keep planning your meals.
         </Text>
       </View>
 
       <View style={{ gap: 12 }}>
         <View style={{ gap: 6 }}>
-          <Text selectable>Email</Text>
+          <Text selectable style={{ color: '#f5f5f5' }}>Email</Text>
           <TextInput
             value={email}
             onChangeText={setEmail}
@@ -49,16 +50,18 @@ export default function LoginScreen() {
             placeholder="you@email.com"
             style={{
               borderWidth: 1,
-              borderColor: '#ddd',
+              borderColor: '#24242b',
               borderRadius: 12,
               paddingHorizontal: 12,
               paddingVertical: 10,
+              color: '#f5f5f5',
             }}
+            placeholderTextColor="#6c6c75"
           />
         </View>
 
         <View style={{ gap: 6 }}>
-          <Text selectable>Password</Text>
+          <Text selectable style={{ color: '#f5f5f5' }}>Password</Text>
           <TextInput
             value={password}
             onChangeText={setPassword}
@@ -66,16 +69,18 @@ export default function LoginScreen() {
             placeholder="Your password"
             style={{
               borderWidth: 1,
-              borderColor: '#ddd',
+              borderColor: '#24242b',
               borderRadius: 12,
               paddingHorizontal: 12,
               paddingVertical: 10,
+              color: '#f5f5f5',
             }}
+            placeholderTextColor="#6c6c75"
           />
         </View>
 
         {error ? (
-          <Text selectable style={{ color: '#b00020' }}>
+          <Text selectable style={{ color: '#ff6b6b' }}>
             {error}
           </Text>
         ) : null}
@@ -84,13 +89,13 @@ export default function LoginScreen() {
           onPress={handleSubmit}
           disabled={submitting}
           style={{
-            backgroundColor: submitting ? '#999' : '#111',
+            backgroundColor: submitting ? '#6c6c75' : '#f5f5f5',
             paddingVertical: 12,
             borderRadius: 12,
             alignItems: 'center',
           }}
         >
-          <Text selectable style={{ color: '#fff', fontWeight: '600' }}>
+          <Text selectable style={{ color: '#0b0b0f', fontWeight: '600' }}>
             {submitting ? 'Signing in...' : 'Sign In'}
           </Text>
         </Pressable>
@@ -98,8 +103,16 @@ export default function LoginScreen() {
 
       <Link href="/(auth)/signup" asChild>
         <Pressable>
-          <Text selectable style={{ color: '#111', textDecorationLine: 'underline' }}>
+          <Text selectable style={{ color: '#f5f5f5', textDecorationLine: 'underline' }}>
             Need an account? Sign up
+          </Text>
+        </Pressable>
+      </Link>
+
+      <Link href="/(auth)/onboarding" asChild>
+        <Pressable>
+          <Text selectable style={{ color: '#f5f5f5', textDecorationLine: 'underline' }}>
+            Back to intro
           </Text>
         </Pressable>
       </Link>

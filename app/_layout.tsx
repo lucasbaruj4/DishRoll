@@ -13,13 +13,15 @@ function AuthGate() {
   React.useEffect(() => {
     if (loading) return;
     const inAuthGroup = segments[0] === '(auth)';
+    const isOnboarding =
+      inAuthGroup && (segments[1] === 'onboarding' || segments[1] === 'kitchen');
 
     if (!session && !inAuthGroup) {
-      router.replace('/(auth)/login');
+      router.replace('/(auth)/onboarding');
       return;
     }
 
-    if (session && inAuthGroup) {
+    if (session && inAuthGroup && !isOnboarding) {
       router.replace('/(tabs)/inventory');
     }
   }, [loading, session, segments, router]);

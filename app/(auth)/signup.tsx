@@ -1,10 +1,11 @@
 import * as React from 'react';
-import { Link } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import { ScrollView, Text, TextInput, Pressable, View } from 'react-native';
 import { useAuth } from '../../hooks/useAuth';
 
 export default function SignupScreen() {
   const { signUp } = useAuth();
+  const router = useRouter();
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [submitting, setSubmitting] = React.useState(false);
@@ -15,6 +16,7 @@ export default function SignupScreen() {
     setSubmitting(true);
     try {
       await signUp(email.trim(), password);
+      router.replace('/(auth)/kitchen');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unable to sign up.';
       setError(message);
@@ -26,20 +28,21 @@ export default function SignupScreen() {
   return (
     <ScrollView
       contentInsetAdjustmentBehavior="automatic"
-      contentContainerStyle={{ padding: 24, gap: 16 }}
+      style={{ backgroundColor: '#0b0b0f' }}
+      contentContainerStyle={{ padding: 24, gap: 16, flexGrow: 1 }}
     >
       <View style={{ gap: 8 }}>
-        <Text selectable style={{ fontSize: 24, fontWeight: '600' }}>
+        <Text selectable style={{ fontSize: 24, fontWeight: '600', color: '#f5f5f5' }}>
           Create your account
         </Text>
-        <Text selectable style={{ color: '#666' }}>
+        <Text selectable style={{ color: '#b3b3b3' }}>
           Start building your macro-friendly meal plan.
         </Text>
       </View>
 
       <View style={{ gap: 12 }}>
         <View style={{ gap: 6 }}>
-          <Text selectable>Email</Text>
+          <Text selectable style={{ color: '#f5f5f5' }}>Email</Text>
           <TextInput
             value={email}
             onChangeText={setEmail}
@@ -49,16 +52,18 @@ export default function SignupScreen() {
             placeholder="you@email.com"
             style={{
               borderWidth: 1,
-              borderColor: '#ddd',
+              borderColor: '#24242b',
               borderRadius: 12,
               paddingHorizontal: 12,
               paddingVertical: 10,
+              color: '#f5f5f5',
             }}
+            placeholderTextColor="#6c6c75"
           />
         </View>
 
         <View style={{ gap: 6 }}>
-          <Text selectable>Password</Text>
+          <Text selectable style={{ color: '#f5f5f5' }}>Password</Text>
           <TextInput
             value={password}
             onChangeText={setPassword}
@@ -66,16 +71,18 @@ export default function SignupScreen() {
             placeholder="Create a password"
             style={{
               borderWidth: 1,
-              borderColor: '#ddd',
+              borderColor: '#24242b',
               borderRadius: 12,
               paddingHorizontal: 12,
               paddingVertical: 10,
+              color: '#f5f5f5',
             }}
+            placeholderTextColor="#6c6c75"
           />
         </View>
 
         {error ? (
-          <Text selectable style={{ color: '#b00020' }}>
+          <Text selectable style={{ color: '#ff6b6b' }}>
             {error}
           </Text>
         ) : null}
@@ -84,13 +91,13 @@ export default function SignupScreen() {
           onPress={handleSubmit}
           disabled={submitting}
           style={{
-            backgroundColor: submitting ? '#999' : '#111',
+            backgroundColor: submitting ? '#6c6c75' : '#f5f5f5',
             paddingVertical: 12,
             borderRadius: 12,
             alignItems: 'center',
           }}
         >
-          <Text selectable style={{ color: '#fff', fontWeight: '600' }}>
+          <Text selectable style={{ color: '#0b0b0f', fontWeight: '600' }}>
             {submitting ? 'Creating account...' : 'Sign Up'}
           </Text>
         </Pressable>
@@ -98,7 +105,7 @@ export default function SignupScreen() {
 
       <Link href="/(auth)/login" asChild>
         <Pressable>
-          <Text selectable style={{ color: '#111', textDecorationLine: 'underline' }}>
+          <Text selectable style={{ color: '#f5f5f5', textDecorationLine: 'underline' }}>
             Already have an account? Log in
           </Text>
         </Pressable>
