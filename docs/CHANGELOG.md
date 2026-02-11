@@ -38,6 +38,8 @@
 - Hid onboarding header (`Welcome`) to remove redundant back navigation from the intro screen.
 - Switched questionnaire back handlers to `dismissTo(...)` and configured `animationTypeForReplace: 'pop'` for questionnaire + onboarding routes to keep back-like iOS transitions on replace fallbacks.
 - Disabled iOS swipe-back gestures on questionnaire screens so navigation advances/returns only through explicit controls.
+- Fixed post-setup routing race in root auth gate by refreshing questionnaire progress on route changes and immediately redirecting completed users to `/(tabs)/inventory`.
+- Applied dark-mode styling to tab navigator chrome: dark header and dark bottom tab bar with updated active/inactive tint colors.
 
 ## 2026-02-09
 - Scaffolded Expo Router structure with auth and tab layouts.

@@ -46,6 +46,28 @@ function AuthGate() {
   }, [loading, session, user]);
 
   React.useEffect(() => {
+    if (loading || !session || !user) return;
+
+    let active = true;
+    const syncProgressOnRouteChange = async () => {
+      try {
+        const progress = await getQuestionnaireProgress(user.id);
+        if (!active) return;
+        setQuestionnaireDone(progress.completed);
+        setQuestionnaireStep(progress.step);
+      } catch {
+        // Keep existing state when refresh fails.
+      }
+    };
+
+    syncProgressOnRouteChange();
+
+    return () => {
+      active = false;
+    };
+  }, [segments, loading, session, user]);
+
+  React.useEffect(() => {
     if (loading) return;
     if (session && questionnaireDone === null) return;
     if (session && questionnaireStep === null) return;
@@ -53,12 +75,6 @@ function AuthGate() {
     const secondSegment = segments.slice(1, 2)[0];
     const thirdSegment = segments.slice(2, 3)[0];
     const inAuthGroup = firstSegment === '(auth)';
-    const isOnboarding =
-      inAuthGroup &&
-      (secondSegment === 'onboarding' ||
-        secondSegment === 'kitchen' ||
-        secondSegment === 'initial_questionaire');
-
     if (!session && !inAuthGroup) {
       router.replace('/(auth)/onboarding');
       return;
@@ -113,7 +129,7 @@ function AuthGate() {
       return;
     }
 
-    if (session && inAuthGroup && !isOnboarding) {
+    if (session && questionnaireDone === true && inAuthGroup) {
       router.replace('/(tabs)/inventory');
     }
   }, [
