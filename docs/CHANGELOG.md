@@ -40,6 +40,8 @@
 - Disabled iOS swipe-back gestures on questionnaire screens so navigation advances/returns only through explicit controls.
 - Fixed post-setup routing race in root auth gate by refreshing questionnaire progress on route changes and immediately redirecting completed users to `/(tabs)/inventory`.
 - Applied dark-mode styling to tab navigator chrome: dark header and dark bottom tab bar with updated active/inactive tint colors.
+- Removed the `Onboarding` text label from the signup screen back button so only the back chevron is shown.
+- Updated sign-out behavior to clear local auth session state/storage immediately, preventing stale-session limbo after server-side user deletion.
 
 ## 2026-02-09
 - Scaffolded Expo Router structure with auth and tab layouts.

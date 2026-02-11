@@ -20,7 +20,13 @@ export default function AuthLayout() {
         }}
       />
       <Stack.Screen name="login" options={{ title: 'Log In' }} />
-      <Stack.Screen name="signup" options={{ title: 'Sign Up' }} />
+      <Stack.Screen
+        name="signup"
+        options={{
+          title: 'Sign Up',
+          headerBackTitle: '',
+        }}
+      />
       <Stack.Screen
         name="initial_questionaire/ingredients"
         options={{
