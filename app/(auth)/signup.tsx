@@ -16,7 +16,7 @@ export default function SignupScreen() {
     setSubmitting(true);
     try {
       await signUp(email.trim(), password);
-      router.replace('/(auth)/kitchen');
+      router.replace('/(auth)/initial_questionaire/ingredients');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unable to sign up.';
       setError(message);
