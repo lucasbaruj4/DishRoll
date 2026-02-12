@@ -21,5 +21,5 @@ export default function Index() {
     return <Redirect href="/(auth)/login" />;
   }
 
-  return <Redirect href="/(tabs)/inventory" />;
+  return <Redirect href="/(tabs)/generate" />;
 }

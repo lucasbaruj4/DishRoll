@@ -1,5 +1,32 @@
 # Changelog
 
+## 2026-02-12
+- Hardened edge generation request handling with ingredient input length caps and OpenAI upstream timeout protection (`openai_timeout` -> HTTP 504).
+- Replaced SDK edge invoke path for recipe generation with explicit HTTPS call to `https://<project-ref>.functions.supabase.co/generate-recipes` using bearer session token + `apikey` to avoid persistent `invalid JWT` gateway ambiguity.
+- Updated function auth propagation to use `supabase.functions.setAuth(accessToken)` before invoke, preventing publishable-key authorization from being treated as JWT by edge gateway.
+- Added automatic auth-session refresh + single retry for recipe generation when edge function returns `invalid JWT`.
+- Fixed recipe-generation edge invoke auth propagation by explicitly attaching the current Supabase access token to function requests.
+- Fixed Inventory ingredient tile layout regression (names rendering vertically due nested width constraints) by removing extra wrapper sizing.
+- Changed Inventory availability edits to staged changes with an animated floating bottom action bar and explicit `Save changes` commit button.
+- Made Edge Function model configurable via server secret: `OPENAI_MODEL` (defaults to `gpt-4o-mini`) so testing can switch to cheaper models without code changes.
+- Expanded `docs/OPENAI_EDGE_FUNCTION_SETUP.md` with explicit OpenAI setup details: model used, prompt used, and fast/low-cost dev testing guidance.
+- Hardened `generate-recipes` Edge Function with authenticated-user enforcement, per-user rolling rate limiting (12 requests / 15 minutes), and request usage logging.
+- Added migration `supabase/migrations/0007_2026_02_12_recipe_generation_logs.sql` for `recipe_generation_logs` (indexes + RLS policy) used by rate limiting and observability.
+- Updated `docs/OPENAI_EDGE_FUNCTION_SETUP.md` with migration step (`supabase db push`) plus secure deploy flow.
+- Moved OpenAI recipe generation off the client into Supabase Edge Function `generate-recipes` (`supabase/functions/generate-recipes/index.ts`) so API keys are server-only.
+- Switched app generation calls to `supabase.functions.invoke('generate-recipes')` with local-draft fallback if the function is unavailable.
+- Removed `EXPO_PUBLIC_OPENAI_API_KEY` from client env templates (`.env.local`, `.env.example`) and documented secure setup in `docs/OPENAI_EDGE_FUNCTION_SETUP.md`.
+- Added recipe generation infrastructure with robust local fallback behavior for both generation and persistence failures.
+- Removed the `Quick Generate` top panel from `Generate` while keeping the four macro/prep cards and `Generate Swipe Deck` action as requested.
+- Reordered bottom tabs to the requested sequence: `Generate`, `Inventory`, `Saved`, `Profile`.
+- Set `Generate` as the default tab landing route (tab layout, root index redirect, and post-auth/post-questionnaire redirects).
+- Revamped the `Generate` screen visual design with card-based hierarchy and improved macro input layout.
+- Migrated generate ingredient sourcing from legacy `ingredients` table to onboarding-backed `user_ingredients` + `ingredient_catalog`.
+- Rebuilt `Inventory` UI to match onboarding ingredient selection: searchable quick-pick tiles with identical tile component and styling direction.
+- Added `useUserIngredients` hook for availability state management on `user_ingredients`.
+- Updated dev RLS checks to validate `user_ingredients` instead of deprecated `ingredients`.
+- Applied visual polish to `Saved` and `Profile` tab screens for consistent styling.
+
 ## 2026-02-11
 - Continuing frontend refinement on onboarding and auth-related UX details.
 - Backend feature work is queued next after onboarding polish is finalized.

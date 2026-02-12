@@ -19,7 +19,7 @@ export function useRlsCheck() {
           .neq('id', user.id)
           .limit(1),
         supabase
-          .from('ingredients')
+          .from('user_ingredients')
           .select('id,user_id')
           .neq('user_id', user.id)
           .limit(1),
@@ -53,7 +53,7 @@ export function useRlsCheck() {
             index === 0
               ? 'profiles'
               : index === 1
-              ? 'ingredients'
+              ? 'user_ingredients'
               : index === 2
               ? 'recipes'
               : index === 3

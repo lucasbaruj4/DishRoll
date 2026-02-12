@@ -46,7 +46,7 @@ export default function KitchenScreen() {
   };
 
   const handleContinue = () => {
-    router.replace('/(tabs)/inventory');
+    router.replace('/(tabs)/generate');
   };
 
   return (

@@ -130,7 +130,7 @@ function AuthGate() {
     }
 
     if (session && questionnaireDone === true && inAuthGroup) {
-      router.replace('/(tabs)/inventory');
+      router.replace('/(tabs)/generate');
     }
   }, [
     loading,

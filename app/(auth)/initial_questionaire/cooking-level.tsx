@@ -94,7 +94,7 @@ export default function InitialLevelScreen() {
     setSaving(true);
     try {
       await completeQuestionnaireWithCookingLevel(user.id, selectedId);
-      router.replace('/(tabs)/inventory');
+      router.replace('/(tabs)/generate');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unable to save cooking level.';
       setSaveError(message);

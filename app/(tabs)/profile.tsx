@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { ScrollView, Text, Pressable } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useAuth } from '../../hooks/useAuth';
 
 export default function ProfileScreen() {
@@ -19,21 +19,36 @@ export default function ProfileScreen() {
     <ScrollView
       contentInsetAdjustmentBehavior="automatic"
       style={{ backgroundColor: '#0b0b0f' }}
-      contentContainerStyle={{ padding: 24, gap: 12, flexGrow: 1 }}
+      contentContainerStyle={{ padding: 24, gap: 16, flexGrow: 1 }}
     >
-      <Text selectable style={{ fontSize: 20, fontWeight: '600', color: '#f5f5f5' }}>
-        Profile
-      </Text>
-      <Text selectable style={{ color: '#b3b3b3' }}>
-        {user?.email ?? 'No email found'}
-      </Text>
+      <View
+        style={{
+          borderRadius: 20,
+          borderWidth: 1,
+          borderColor: '#1f1f27',
+          backgroundColor: '#121218',
+          padding: 18,
+          gap: 8,
+        }}
+      >
+        <Text selectable style={{ color: '#8f8f98', fontSize: 12, letterSpacing: 1.8 }}>
+          ACCOUNT
+        </Text>
+        <Text selectable style={{ fontSize: 26, fontWeight: '700', color: '#f4f4f4' }}>
+          Profile
+        </Text>
+        <Text selectable style={{ color: '#b3b3b3', lineHeight: 20 }}>
+          {user?.email ?? 'No email found'}
+        </Text>
+      </View>
+
       <Pressable
         onPress={handleSignOut}
         disabled={submitting}
         style={{
           backgroundColor: submitting ? '#6c6c75' : '#f5f5f5',
-          paddingVertical: 12,
-          borderRadius: 12,
+          paddingVertical: 14,
+          borderRadius: 14,
           alignItems: 'center',
         }}
       >
