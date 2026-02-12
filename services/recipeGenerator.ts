@@ -50,6 +50,7 @@ const RECIPE_SUFFIXES = ['Power Bowl', 'Skillet', 'Stir-Fry'];
 const GENERATE_RECIPES_FUNCTION = 'generate-recipes';
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL?.trim() ?? '';
 const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY?.trim() ?? '';
+const MIN_RECIPE_INGREDIENTS = 2;
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
@@ -71,10 +72,27 @@ function parsePositiveNumber(value: unknown, fallback: number) {
   return Math.round(parsed);
 }
 
+function normalizeIngredientKey(name: string) {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+function buildAllowedIngredientLookup(ingredientNames: string[]) {
+  const lookup = new Map<string, string>();
+  for (const name of ingredientNames) {
+    const canonical = name.trim();
+    if (!canonical) continue;
+    const key = normalizeIngredientKey(canonical);
+    if (!key || lookup.has(key)) continue;
+    lookup.set(key, canonical);
+  }
+  return lookup;
+}
+
 function sanitizeRecipe(
   value: unknown,
   index: number,
-  params: GenerateRecipeParams
+  params: GenerateRecipeParams,
+  allowedIngredientLookup: Map<string, string>
 ): GeneratedRecipeInput | null {
   if (!isObject(value)) {
     return null;
@@ -97,6 +115,19 @@ function sanitizeRecipe(
           unit: String(item.unit ?? '').trim() || 'serving',
         }))
         .filter((item) => item.name.length > 0)
+        .map((item) => {
+          const key = normalizeIngredientKey(item.name);
+          const canonical = allowedIngredientLookup.get(key);
+          if (!canonical) {
+            return null;
+          }
+          return {
+            ...item,
+            name: canonical,
+          };
+        })
+        .filter((item): item is { name: string; amount: string; unit: string } => Boolean(item))
+        .filter((item, idx, arr) => arr.findIndex((other) => other.name === item.name) === idx)
         .slice(0, 12)
     : [];
 
@@ -107,7 +138,7 @@ function sanitizeRecipe(
         .slice(0, 8)
     : [];
 
-  if (ingredients.length === 0 || instructions.length === 0) {
+  if (ingredients.length < MIN_RECIPE_INGREDIENTS || instructions.length === 0) {
     return null;
   }
 
@@ -129,8 +160,9 @@ function sanitizeRecipeList(
   items: unknown[],
   params: GenerateRecipeParams
 ): GeneratedRecipeInput[] {
+  const allowedIngredientLookup = buildAllowedIngredientLookup(params.ingredientNames);
   return items
-    .map((item, index) => sanitizeRecipe(item, index, params))
+    .map((item, index) => sanitizeRecipe(item, index, params, allowedIngredientLookup))
     .filter((item): item is GeneratedRecipeInput => Boolean(item))
     .slice(0, 3);
 }

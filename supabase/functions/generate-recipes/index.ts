@@ -4,6 +4,8 @@ const RATE_LIMIT_WINDOW_MINUTES = 15;
 const RATE_LIMIT_MAX_REQUESTS = 12;
 const OPENAI_TIMEOUT_MS = 20000;
 const MAX_INGREDIENT_NAME_LENGTH = 48;
+const MAX_RECIPE_INGREDIENTS = 12;
+const MIN_RECIPE_INGREDIENTS = 2;
 
 declare const Deno: {
   env: { get(key: string): string | undefined };
@@ -48,10 +50,18 @@ function asPositiveNumber(value: unknown, fallback: number) {
 
 function normalizeIngredients(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
-  return value
-    .map((item) => String(item ?? '').trim().slice(0, MAX_INGREDIENT_NAME_LENGTH))
-    .filter(Boolean)
-    .slice(0, 20);
+  const seen = new Set<string>();
+  const output: string[] = [];
+  for (const item of value) {
+    const name = String(item ?? '').trim().slice(0, MAX_INGREDIENT_NAME_LENGTH);
+    if (!name) continue;
+    const key = normalizeIngredientKey(name);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    output.push(name);
+    if (output.length >= 20) break;
+  }
+  return output;
 }
 
 function normalizeMacros(value: unknown): MacroTargets {
@@ -68,6 +78,10 @@ function buildPrompt(ingredients: string[], macros: MacroTargets, timeLimit: num
 Use only these ingredients: ${ingredients.join(', ')}.
 Target macros per recipe near: protein ${macros.protein}g, carbs ${macros.carbs}g, fats ${macros.fats}g.
 Keep preparation time at or under ${timeLimit} minutes.
+Hard rules:
+- Every ingredient in each recipe must be from the provided list.
+- Do not add pantry staples (salt, pepper, oil, spices, water, etc.) unless they are explicitly listed.
+- If an ingredient is unavailable, replace it with one from the provided list.
 
 Return strict JSON:
 {
@@ -82,6 +96,70 @@ Return strict JSON:
     }
   ]
 }`;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function normalizeIngredientKey(name: string) {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+function buildAllowedIngredientLookup(ingredients: string[]) {
+  const lookup = new Map<string, string>();
+  for (const ingredient of ingredients) {
+    const key = normalizeIngredientKey(ingredient);
+    if (!key) continue;
+    if (!lookup.has(key)) {
+      lookup.set(key, ingredient);
+    }
+  }
+  return lookup;
+}
+
+function sanitizeRecipesToAllowedIngredients(
+  recipes: unknown[],
+  allowedLookup: Map<string, string>
+): Record<string, unknown>[] {
+  const sanitized: Record<string, unknown>[] = [];
+
+  for (const recipe of recipes) {
+    if (!isRecord(recipe)) continue;
+    if (!Array.isArray(recipe.ingredients)) continue;
+
+    const seenIngredients = new Set<string>();
+    const filteredIngredients: Array<{ name: string; amount: string; unit: string }> = [];
+
+    for (const rawIngredient of recipe.ingredients) {
+      if (!isRecord(rawIngredient)) continue;
+      const key = normalizeIngredientKey(String(rawIngredient.name ?? '').trim());
+      if (!key || seenIngredients.has(key)) continue;
+
+      const canonicalName = allowedLookup.get(key);
+      if (!canonicalName) continue;
+
+      seenIngredients.add(key);
+      filteredIngredients.push({
+        name: canonicalName,
+        amount: String(rawIngredient.amount ?? '').trim() || '1',
+        unit: String(rawIngredient.unit ?? '').trim() || 'serving',
+      });
+
+      if (filteredIngredients.length >= MAX_RECIPE_INGREDIENTS) break;
+    }
+
+    if (filteredIngredients.length < MIN_RECIPE_INGREDIENTS) continue;
+
+    sanitized.push({
+      ...recipe,
+      ingredients: filteredIngredients,
+    });
+
+    if (sanitized.length >= 3) break;
+  }
+
+  return sanitized;
 }
 
 function parseContentRangeTotal(headerValue: string | null) {
@@ -215,6 +293,7 @@ Deno.serve(async (request: Request) => {
   try {
     const payload = (await request.json()) as GenerateRequest;
     const ingredientNames = normalizeIngredients(payload.ingredientNames);
+    const allowedIngredientLookup = buildAllowedIngredientLookup(ingredientNames);
     const macros = normalizeMacros(payload.macros);
     const timeLimit = clamp(asPositiveNumber(payload.timeLimit, 30), 10, 90);
     ingredientCountForLog = ingredientNames.length;
@@ -310,6 +389,24 @@ Deno.serve(async (request: Request) => {
       return jsonResponse(502, { error: 'Invalid OpenAI payload shape' });
     }
 
+    const sanitizedRecipes = sanitizeRecipesToAllowedIngredients(
+      parsed.recipes,
+      allowedIngredientLookup
+    );
+    if (sanitizedRecipes.length === 0) {
+      await logGenerationEvent(supabaseUrl, supabaseAnonKey, authHeader, {
+        userId,
+        status: 'error',
+        ingredientCount: ingredientNames.length,
+        errorCode: 'openai_disallowed_ingredients',
+        latencyMs: Date.now() - startedAt,
+      }).catch(() => undefined);
+
+      return jsonResponse(502, {
+        error: 'OpenAI returned recipes that do not match your available ingredients.',
+      });
+    }
+
     await logGenerationEvent(supabaseUrl, supabaseAnonKey, authHeader, {
       userId,
       status: 'success',
@@ -317,7 +414,7 @@ Deno.serve(async (request: Request) => {
       latencyMs: Date.now() - startedAt,
     }).catch(() => undefined);
 
-    return jsonResponse(200, { recipes: parsed.recipes.slice(0, 3) });
+    return jsonResponse(200, { recipes: sanitizedRecipes });
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') {
       await logGenerationEvent(supabaseUrl, supabaseAnonKey, authHeader, {

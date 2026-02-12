@@ -16,12 +16,12 @@ export function useUserIngredients() {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
-  const refresh = React.useCallback(async () => {
-    if (authLoading) return;
+  const refresh = React.useCallback(async (): Promise<UserIngredient[]> => {
+    if (authLoading) return [];
     if (!user) {
       setItems([]);
       setLoading(false);
-      return;
+      return [];
     }
 
     setLoading(true);
@@ -36,11 +36,13 @@ export function useUserIngredients() {
     if (fetchError) {
       setError(fetchError.message);
       setLoading(false);
-      return;
+      return [];
     }
 
-    setItems((data ?? []) as UserIngredient[]);
+    const nextItems = (data ?? []) as UserIngredient[];
+    setItems(nextItems);
     setLoading(false);
+    return nextItems;
   }, [authLoading, user]);
 
   React.useEffect(() => {

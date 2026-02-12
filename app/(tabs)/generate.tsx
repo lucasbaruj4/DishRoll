@@ -8,6 +8,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   generateRecipeBatch,
   logRecipeSwipe,
@@ -56,7 +57,8 @@ function toLocalDeckCards(recipes: GeneratedRecipeInput[]): RecipeDeckCard[] {
 export default function GenerateScreen() {
   const { user } = useAuth();
   const { items: catalogItems } = useIngredientCatalog();
-  const { availableCatalogIds, loading: ingredientsLoading } = useUserIngredients();
+  const { availableCatalogIds, loading: ingredientsLoading, refresh: refreshUserIngredients } =
+    useUserIngredients();
   const { width } = useWindowDimensions();
   const [protein, setProtein] = React.useState(150);
   const [carbs, setCarbs] = React.useState(200);
@@ -77,6 +79,23 @@ export default function GenerateScreen() {
       .map((item) => item.name)
       .filter(Boolean);
   }, [availableCatalogIds, catalogItems]);
+  const catalogNameById = React.useMemo(() => {
+    const map = new Map<string, string>();
+    for (const item of catalogItems) {
+      if (item.name) map.set(item.id, item.name);
+    }
+    return map;
+  }, [catalogItems]);
+  const availableIngredientPreview = React.useMemo(
+    () => availableIngredientNames.slice(0, 10),
+    [availableIngredientNames]
+  );
+
+  useFocusEffect(
+    React.useCallback(() => {
+      void refreshUserIngredients();
+    }, [refreshUserIngredients])
+  );
 
   const currentCard = deck[index] ?? null;
   const nextCard = deck[index + 1] ?? null;
@@ -178,11 +197,6 @@ export default function GenerateScreen() {
       return;
     }
 
-    if (availableIngredientNames.length < 3) {
-      setError('Add at least 3 available ingredients first.');
-      return;
-    }
-
     const hasInvalid = protein <= 0 || carbs <= 0 || fats <= 0 || timeLimit <= 0;
 
     if (hasInvalid) {
@@ -193,8 +207,23 @@ export default function GenerateScreen() {
     setSubmitting(true);
     setError(null);
     setLastSwipe(null);
+
+    const latestCommittedIngredients = await refreshUserIngredients();
+    const latestIngredientNames = latestCommittedIngredients
+      .filter((item) => item.is_available)
+      .map((item) => catalogNameById.get(item.catalog_id) ?? '')
+      .filter(Boolean);
+
+    if (latestIngredientNames.length < 3) {
+      setError('Add at least 3 available ingredients first, then save changes in Inventory.');
+      setDeck([]);
+      setIndex(0);
+      setSubmitting(false);
+      return;
+    }
+
     const result = await generateRecipeBatch({
-      ingredientNames: availableIngredientNames,
+      ingredientNames: latestIngredientNames,
       macros: { protein, carbs, fats },
       timeLimit,
     });
@@ -396,6 +425,30 @@ export default function GenerateScreen() {
           {submitting ? 'Generating...' : 'Generate Swipe Deck'}
         </Text>
       </Pressable>
+
+      <View
+        style={{
+          borderWidth: 1,
+          borderColor: '#252530',
+          backgroundColor: '#121218',
+          borderRadius: 12,
+          padding: 10,
+          gap: 6,
+        }}
+      >
+        <Text selectable style={{ color: '#a7a7b1', fontSize: 12, letterSpacing: 0.4 }}>
+          INGREDIENTS SENT TO GENERATOR ({availableIngredientNames.length})
+        </Text>
+        <Text selectable style={{ color: '#d0d0d8', lineHeight: 20 }}>
+          {availableIngredientPreview.length > 0
+            ? availableIngredientPreview.join(', ')
+            : 'None selected yet.'}
+          {availableIngredientNames.length > availableIngredientPreview.length ? ', ...' : ''}
+        </Text>
+        <Text selectable style={{ color: '#8f8f98', fontSize: 12 }}>
+          Updates here only after Inventory changes are saved.
+        </Text>
+      </View>
 
       {error ? (
         <View
