@@ -1,6 +1,15 @@
 # Changelog
 
 ## 2026-02-13
+- Updated Step 3 (cooking level) finish flow to wait until questionnaire completion state is readable before navigating to tabs, preventing brief duplicate return-to-step animations.
+- Improved cooking-level slider touch tracking to use measured track screen coordinates (`pageX`) so grabbing the knob no longer jumps toward the start position.
+- Fixed transition-edge white flash by setting root stack `contentStyle` background to dark and aligning app-level appearance/splash background to dark defaults.
+- Converted Step 2 (allergies/dislikes) CTA into a floating action bar anchored above the bottom safe area, matching the Step 1 floating action treatment.
+- Fixed signup/create-account transition direction by switching auth screen replace animations (`Log In`, `Sign Up`) to forward-style `push`, so moving into questionnaire no longer feels like reverse/back navigation.
+- Changed questionnaire screen replace animations to forward-direction (`animationTypeForReplace: 'push'`) so onboarding step-to-step transitions no longer look like back navigation.
+- Updated Step 2 (allergies/dislikes) CTA copy to be visible by default with dynamic text: `No allergies or dislikes` when empty, and `X allergy/dislikes saved` after selections.
+- Updated onboarding Step 1 (ingredients) to use a conditional floating `Continue` action bar that appears only after selecting at least 3 ingredients, matching the Inventory save-bar interaction model.
+- Switched onboarding/auth entry and questionnaire forward transitions to `replace` (`onboarding` -> `signup/login/ingredients`, ingredients -> allergies, allergies -> cooking level) for more consistent stack navigation behavior.
 - Set auth `TextInput` keyboard appearance to dark on `Sign Up` and `Log In` so iOS keyboard theme matches the dark UI.
 - Added explicit header-left chevron buttons on `Log In` and `Sign Up` that route back to onboarding, ensuring a visible iOS-style back control even when no prior stack entry exists.
 - Ensured auth-screen back affordance stays label-less while preserving iOS chevron styling.

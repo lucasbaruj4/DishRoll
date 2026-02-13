@@ -41,7 +41,7 @@ export default function AuthLayout() {
           title: 'Log In',
           headerBackTitle: '',
           headerBackButtonDisplayMode: 'minimal',
-          animationTypeForReplace: 'pop',
+          animationTypeForReplace: 'push',
           headerLeft: renderOnboardingBack,
         }}
       />
@@ -51,7 +51,7 @@ export default function AuthLayout() {
           title: 'Sign Up',
           headerBackTitle: '',
           headerBackButtonDisplayMode: 'minimal',
-          animationTypeForReplace: 'pop',
+          animationTypeForReplace: 'push',
           headerLeft: renderOnboardingBack,
         }}
       />
@@ -59,7 +59,7 @@ export default function AuthLayout() {
         name="initial_questionaire/ingredients"
         options={{
           title: 'Initial Questionnaire',
-          animationTypeForReplace: 'pop',
+          animationTypeForReplace: 'push',
           gestureEnabled: false,
         }}
       />
@@ -67,7 +67,7 @@ export default function AuthLayout() {
         name="initial_questionaire/allergies"
         options={{
           title: 'Initial Questionnaire',
-          animationTypeForReplace: 'pop',
+          animationTypeForReplace: 'push',
           gestureEnabled: false,
         }}
       />
@@ -75,7 +75,7 @@ export default function AuthLayout() {
         name="initial_questionaire/cooking-level"
         options={{
           title: 'Initial Questionnaire',
-          animationTypeForReplace: 'pop',
+          animationTypeForReplace: 'push',
           gestureEnabled: false,
         }}
       />

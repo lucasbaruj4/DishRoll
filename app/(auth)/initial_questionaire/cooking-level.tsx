@@ -13,7 +13,10 @@ import * as React from 'react';
 import { useAuth } from '../../../hooks/useAuth';
 import { useCookingLevelCatalog } from '../../../hooks/useCookingLevelCatalog';
 import { supabase } from '../../../services/supabase';
-import { completeQuestionnaireWithCookingLevel } from '../../../services/initialQuestionnaire';
+import {
+  completeQuestionnaireWithCookingLevel,
+  getQuestionnaireProgress,
+} from '../../../services/initialQuestionnaire';
 
 export default function InitialLevelScreen() {
   const router = useRouter();
@@ -21,9 +24,24 @@ export default function InitialLevelScreen() {
   const { items, loading, error, refresh } = useCookingLevelCatalog();
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
   const [trackWidth, setTrackWidth] = React.useState(0);
+  const [trackPageX, setTrackPageX] = React.useState(0);
   const [isSliding, setIsSliding] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [saveError, setSaveError] = React.useState<string | null>(null);
+  const trackRef = React.useRef<View | null>(null);
+
+  const waitForQuestionnaireCompletion = async (userId: string) => {
+    const maxAttempts = 12;
+    const waitMs = 120;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      const progress = await getQuestionnaireProgress(userId);
+      if (progress.completed) return true;
+      await new Promise((resolve) => setTimeout(resolve, waitMs));
+    }
+
+    return false;
+  };
 
   React.useEffect(() => {
     const bootstrap = async () => {
@@ -64,6 +82,11 @@ export default function InitialLevelScreen() {
 
   const onTrackLayout = (event: LayoutChangeEvent) => {
     setTrackWidth(event.nativeEvent.layout.width);
+    requestAnimationFrame(() => {
+      trackRef.current?.measureInWindow((x) => {
+        setTrackPageX(x);
+      });
+    });
   };
 
   const updateSelectionFromTouch = (event: GestureResponderEvent) => {
@@ -74,7 +97,7 @@ export default function InitialLevelScreen() {
     const usableWidth = trackWidth - leftPadding - rightPadding;
     if (usableWidth <= 0) return;
 
-    const rawX = event.nativeEvent.locationX;
+    const rawX = event.nativeEvent.pageX - trackPageX;
     const clamped = Math.max(leftPadding, Math.min(rawX, trackWidth - rightPadding));
     const normalized = (clamped - leftPadding) / usableWidth;
     const nextIndex = Math.round(normalized * (items.length - 1));
@@ -94,6 +117,7 @@ export default function InitialLevelScreen() {
     setSaving(true);
     try {
       await completeQuestionnaireWithCookingLevel(user.id, selectedId);
+      await waitForQuestionnaireCompletion(user.id);
       router.replace('/(tabs)/generate');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unable to save cooking level.';
@@ -169,6 +193,7 @@ export default function InitialLevelScreen() {
       {!loading && !error && items.length > 0 ? (
         <View style={{ gap: 16 }}>
           <View
+            ref={trackRef}
             onLayout={onTrackLayout}
             onStartShouldSetResponder={() => true}
             onMoveShouldSetResponder={() => true}

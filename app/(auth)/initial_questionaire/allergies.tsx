@@ -3,6 +3,7 @@ import { Stack, useRouter } from 'expo-router';
 import { HeaderBackButton } from '@react-navigation/elements';
 import {
   ActivityIndicator,
+  Animated,
   Pressable,
   ScrollView,
   Text,
@@ -30,6 +31,7 @@ export default function InitialAllergiesScreen() {
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const [saving, setSaving] = React.useState(false);
   const [saveError, setSaveError] = React.useState<string | null>(null);
+  const continueBarAnim = React.useRef(new Animated.Value(0)).current;
 
   React.useEffect(() => {
     const bootstrap = async () => {
@@ -50,6 +52,11 @@ export default function InitialAllergiesScreen() {
   }, [user]);
 
   const normalizedQuery = query.trim().toLowerCase();
+  const selectedCount = selectedIds.size;
+  const selectionSummary =
+    selectedCount === 0
+      ? 'No allergies or dislikes'
+      : `${selectedCount} allergy/dislike${selectedCount === 1 ? '' : 's'} saved`;
   const filtered = items.filter((item) => {
     if (!normalizedQuery) return true;
     if (item.name.toLowerCase().includes(normalizedQuery)) return true;
@@ -84,7 +91,7 @@ export default function InitialAllergiesScreen() {
       const selectedRestrictionIds = Array.from(selectedIds);
       await saveUserDietaryRestrictions(user.id, selectedRestrictionIds);
       await setQuestionnaireStep(user.id, 'cooking_level');
-      router.push('/(auth)/initial_questionaire/cooking-level');
+      router.replace('/(auth)/initial_questionaire/cooking-level');
     } catch (err) {
       const message =
         err instanceof Error ? err.message : 'Unable to save allergies and dislikes.';
@@ -99,157 +106,198 @@ export default function InitialAllergiesScreen() {
     router.dismissTo('/(auth)/initial_questionaire/ingredients');
   };
 
+  React.useEffect(() => {
+    Animated.spring(continueBarAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+      bounciness: 6,
+      speed: 18,
+    }).start();
+  }, [continueBarAnim]);
+
+  const continueBarTranslate = continueBarAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [80, 0],
+  });
+
   return (
-    <ScrollView
-      contentInsetAdjustmentBehavior="automatic"
-      style={{ backgroundColor: '#0b0b0f' }}
-      contentContainerStyle={{ padding: 24, gap: 16, flexGrow: 1 }}
-      keyboardShouldPersistTaps="handled"
-    >
-      <Stack.Screen
-        options={{
-          headerBackVisible: false,
-          headerLeft: () =>
-            saving ? null : <HeaderBackButton tintColor="#f4f4f4" onPress={handleBack} />,
-        }}
-      />
+    <View style={{ flex: 1, backgroundColor: '#0b0b0f' }}>
+      <ScrollView
+        contentInsetAdjustmentBehavior="automatic"
+        style={{ backgroundColor: '#0b0b0f' }}
+        contentContainerStyle={{ padding: 24, gap: 16, flexGrow: 1, paddingBottom: 120 }}
+        keyboardShouldPersistTaps="handled"
+      >
+        <Stack.Screen
+          options={{
+            headerBackVisible: false,
+            headerLeft: () =>
+              saving ? null : <HeaderBackButton tintColor="#f4f4f4" onPress={handleBack} />,
+          }}
+        />
 
-      <View style={{ gap: 8 }}>
-        <Text selectable style={{ color: '#8f8f98', fontSize: 12, letterSpacing: 1.8 }}>
-          STEP 2 OF 3
-        </Text>
-        <Text selectable style={{ fontSize: 26, fontWeight: '700', color: '#f4f4f4' }}>
-          Allergies and disliked foods
-        </Text>
-        <Text selectable style={{ color: '#b1b1ba', lineHeight: 20 }}>
-          Select what should never show up in your recommendations.
-        </Text>
-      </View>
-
-      <TextInput
-        value={query}
-        onChangeText={setQuery}
-        placeholder="Search allergies or foods..."
-        autoCapitalize="none"
-        autoCorrect={false}
-        placeholderTextColor="#6a6a74"
-        style={{
-          borderWidth: 1,
-          borderColor: '#2a2a31',
-          borderRadius: 12,
-          paddingHorizontal: 14,
-          paddingVertical: 11,
-          color: '#f4f4f4',
-          backgroundColor: '#111116',
-        }}
-      />
-
-      {loading ? (
-        <View style={{ paddingVertical: 30, alignItems: 'center', gap: 10 }}>
-          <ActivityIndicator color="#f4f4f4" />
-          <Text selectable style={{ color: '#b1b1ba' }}>
-            Loading restrictions...
+        <View style={{ gap: 8 }}>
+          <Text selectable style={{ color: '#8f8f98', fontSize: 12, letterSpacing: 1.8 }}>
+            STEP 2 OF 3
+          </Text>
+          <Text selectable style={{ fontSize: 26, fontWeight: '700', color: '#f4f4f4' }}>
+            Allergies and disliked foods
+          </Text>
+          <Text selectable style={{ color: '#b1b1ba', lineHeight: 20 }}>
+            Select what should never show up in your recommendations.
           </Text>
         </View>
-      ) : null}
 
-      {!loading && error ? (
-        <View style={{ gap: 10, alignItems: 'flex-start' }}>
+        <TextInput
+          value={query}
+          onChangeText={setQuery}
+          placeholder="Search allergies or foods..."
+          autoCapitalize="none"
+          autoCorrect={false}
+          placeholderTextColor="#6a6a74"
+          style={{
+            borderWidth: 1,
+            borderColor: '#2a2a31',
+            borderRadius: 12,
+            paddingHorizontal: 14,
+            paddingVertical: 11,
+            color: '#f4f4f4',
+            backgroundColor: '#111116',
+          }}
+        />
+
+        {loading ? (
+          <View style={{ paddingVertical: 30, alignItems: 'center', gap: 10 }}>
+            <ActivityIndicator color="#f4f4f4" />
+            <Text selectable style={{ color: '#b1b1ba' }}>
+              Loading restrictions...
+            </Text>
+          </View>
+        ) : null}
+
+        {!loading && error ? (
+          <View style={{ gap: 10, alignItems: 'flex-start' }}>
+            <Text selectable style={{ color: '#ff7f7f' }}>
+              {error}
+            </Text>
+            <Pressable
+              onPress={refresh}
+              style={{
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+                borderRadius: 10,
+                borderWidth: 1,
+                borderColor: '#34343d',
+              }}
+            >
+              <Text selectable style={{ color: '#f4f4f4' }}>
+                Retry
+              </Text>
+            </Pressable>
+          </View>
+        ) : null}
+
+        {!loading && !error ? (
+          <View style={{ gap: 14 }}>
+            {allergies.length > 0 ? (
+              <View style={{ gap: 10 }}>
+                <Text selectable style={{ color: '#c6c6cf', fontWeight: '700', fontSize: 15 }}>
+                  Allergies
+                </Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+                  {allergies.map((item) => (
+                    <IngredientTile
+                      key={item.id}
+                      icon={
+                        DIETARY_RESTRICTION_ICON_EMOJI[item.slug] ??
+                        FALLBACK_DIETARY_RESTRICTION_ICON
+                      }
+                      name={item.name}
+                      selected={selectedIds.has(item.id)}
+                      onPress={() => toggleSelected(item.id)}
+                    />
+                  ))}
+                </View>
+              </View>
+            ) : null}
+
+            {dislikes.length > 0 ? (
+              <View style={{ gap: 10 }}>
+                <Text selectable style={{ color: '#c6c6cf', fontWeight: '700', fontSize: 15 }}>
+                  Disliked Foods
+                </Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+                  {dislikes.map((item) => (
+                    <IngredientTile
+                      key={item.id}
+                      icon={
+                        DIETARY_RESTRICTION_ICON_EMOJI[item.slug] ??
+                        FALLBACK_DIETARY_RESTRICTION_ICON
+                      }
+                      name={item.name}
+                      selected={selectedIds.has(item.id)}
+                      onPress={() => toggleSelected(item.id)}
+                    />
+                  ))}
+                </View>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
+
+        {!loading && !error && filtered.length === 0 ? (
+          <Text selectable style={{ color: '#8f8f98' }}>
+            No restrictions matched your search.
+          </Text>
+        ) : null}
+
+        {saveError ? (
           <Text selectable style={{ color: '#ff7f7f' }}>
-            {error}
+            {saveError}
+          </Text>
+        ) : null}
+      </ScrollView>
+
+      <Animated.View
+        pointerEvents="auto"
+        style={{
+          position: 'absolute',
+          left: 16,
+          right: 16,
+          bottom: 18,
+          opacity: continueBarAnim,
+          transform: [{ translateY: continueBarTranslate }],
+        }}
+      >
+        <View
+          style={{
+            borderRadius: 16,
+            borderWidth: 1,
+            borderColor: '#323241',
+            backgroundColor: '#111116',
+            padding: 12,
+            gap: 10,
+          }}
+        >
+          <Text selectable style={{ color: '#b8b8c0' }}>
+            {selectionSummary}
           </Text>
           <Pressable
-            onPress={refresh}
+            onPress={handleContinue}
+            disabled={saving}
             style={{
-              paddingHorizontal: 12,
-              paddingVertical: 8,
-              borderRadius: 10,
-              borderWidth: 1,
-              borderColor: '#34343d',
+              borderRadius: 12,
+              paddingVertical: 12,
+              alignItems: 'center',
+              backgroundColor: saving ? '#6c6c75' : '#f4f4f4',
             }}
           >
-            <Text selectable style={{ color: '#f4f4f4' }}>
-              Retry
+            <Text selectable style={{ color: '#0b0b0f', fontWeight: '700' }}>
+              {saving ? 'Saving...' : 'Continue'}
             </Text>
           </Pressable>
         </View>
-      ) : null}
-
-      {!loading && !error ? (
-        <View style={{ gap: 14 }}>
-          {allergies.length > 0 ? (
-            <View style={{ gap: 10 }}>
-              <Text selectable style={{ color: '#c6c6cf', fontWeight: '700', fontSize: 15 }}>
-                Allergies
-              </Text>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-                {allergies.map((item) => (
-                  <IngredientTile
-                    key={item.id}
-                    icon={
-                      DIETARY_RESTRICTION_ICON_EMOJI[item.slug] ??
-                      FALLBACK_DIETARY_RESTRICTION_ICON
-                    }
-                    name={item.name}
-                    selected={selectedIds.has(item.id)}
-                    onPress={() => toggleSelected(item.id)}
-                  />
-                ))}
-              </View>
-            </View>
-          ) : null}
-
-          {dislikes.length > 0 ? (
-            <View style={{ gap: 10 }}>
-              <Text selectable style={{ color: '#c6c6cf', fontWeight: '700', fontSize: 15 }}>
-                Disliked Foods
-              </Text>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-                {dislikes.map((item) => (
-                  <IngredientTile
-                    key={item.id}
-                    icon={
-                      DIETARY_RESTRICTION_ICON_EMOJI[item.slug] ??
-                      FALLBACK_DIETARY_RESTRICTION_ICON
-                    }
-                    name={item.name}
-                    selected={selectedIds.has(item.id)}
-                    onPress={() => toggleSelected(item.id)}
-                  />
-                ))}
-              </View>
-            </View>
-          ) : null}
-        </View>
-      ) : null}
-
-      {!loading && !error && filtered.length === 0 ? (
-        <Text selectable style={{ color: '#8f8f98' }}>
-          No restrictions matched your search.
-        </Text>
-      ) : null}
-
-      {saveError ? (
-        <Text selectable style={{ color: '#ff7f7f' }}>
-          {saveError}
-        </Text>
-      ) : null}
-
-      <Pressable
-        onPress={handleContinue}
-        disabled={saving}
-        style={{
-          marginTop: 8,
-          paddingVertical: 13,
-          borderRadius: 14,
-          alignItems: 'center',
-          backgroundColor: saving ? '#64646f' : '#f4f4f4',
-        }}
-      >
-        <Text selectable style={{ color: '#050506', fontWeight: '700' }}>
-          {saving ? 'Saving...' : 'Continue'}
-        </Text>
-      </Pressable>
-    </ScrollView>
+      </Animated.View>
+    </View>
   );
 }

@@ -246,7 +246,7 @@ export default function OnboardingScreen() {
 
         <View style={{ gap: 12, marginTop: 6 }}>
           {session ? (
-            <Link href="/(auth)/initial_questionaire/ingredients" asChild>
+            <Link replace href="/(auth)/initial_questionaire/ingredients" asChild>
               <Pressable
                 style={{
                   backgroundColor: '#f4f4f4',
@@ -262,7 +262,7 @@ export default function OnboardingScreen() {
             </Link>
           ) : (
             <>
-              <Link href="/(auth)/signup" asChild>
+              <Link replace href="/(auth)/signup" asChild>
                 <Pressable
                   style={{
                     backgroundColor: '#f4f4f4',
@@ -277,7 +277,7 @@ export default function OnboardingScreen() {
                 </Pressable>
               </Link>
 
-              <Link href="/(auth)/login" asChild>
+              <Link replace href="/(auth)/login" asChild>
                 <Pressable style={{ alignItems: 'center' }}>
                   <Text selectable style={{ textDecorationLine: 'underline', color: '#f4f4f4' }}>
                     Already have an account? Log in
