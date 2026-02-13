@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-02-13
+- Implemented `Saved` tab data integration with Supabase `recipes` (`is_saved = true`): saved recipes now load on focus/reload, support pull-to-refresh, and can be deleted from the app.
+- Added per-user local persistence for last-used Generate macro/time targets so app reload restores the most recent quick-generation inputs without introducing a global default.
+- Added per-user local active-deck resume state (recipe IDs, swipe index, ingredient signature) and DB-backed hydration on app load so persisted decks continue where users left off after reload.
+- Added recipe lookup helper (`getRecipesByIds`) for ordered deck restoration from Supabase based on locally persisted deck IDs.
+- Refactored `Generate` tab into a persistent swipe-deck-first experience with macro editing in a non-blocking bottom sheet instead of a page-level control stack.
+- Added ingredient-sync awareness for generated decks (`Not synced recipes`) so users can keep swiping older decks while seeing when inventory has drifted.
+- Improved swipe-deck card presentation with stronger visual hierarchy (hero area, progress indicator, macro chips) while preserving existing save/skip behavior.
+- Reworked macro editing ergonomics: replaced +/- stepping with direct numeric entry, deferred clamping/normalization until blur/Done/Generate, and added iOS keyboard accessory `Done`.
+- Fixed macro sheet keyboard UX across device sizes by using keyboard frame-driven dynamic insets so footer/actions avoid keyboard overlap on iOS and Android.
+- Simplified Generate interaction model to remove duplicate execution actions: macro sheet is now editor-only with `Done`, and deck generation/regeneration/sync is triggered by a single main-screen CTA.
+- Removed explicit `Skip`/`Save` action buttons from Generate to align with swipe-first interaction; swiping is now the only accept/reject action.
+- Added a one-time swipe tutorial overlay (animated left/right hint + required "I understand swipe controls" checkbox + `Got it`) persisted locally so it only appears until acknowledged.
+
 ## 2026-02-12
 - Hardened edge generation request handling with ingredient input length caps and OpenAI upstream timeout protection (`openai_timeout` -> HTTP 504).
 - Replaced SDK edge invoke path for recipe generation with explicit HTTPS call to `https://<project-ref>.functions.supabase.co/generate-recipes` using bearer session token + `apikey` to avoid persistent `invalid JWT` gateway ambiguity.

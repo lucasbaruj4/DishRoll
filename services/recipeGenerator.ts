@@ -353,6 +353,46 @@ export async function saveGeneratedRecipes(
   return (data ?? []) as SavedRecipe[];
 }
 
+export async function getRecipesByIds(userId: string, recipeIds: string[]): Promise<SavedRecipe[]> {
+  if (recipeIds.length === 0) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from('recipes')
+    .select('id, user_id, name, description, preparation_time, macros, ingredients, instructions, is_saved')
+    .eq('user_id', userId)
+    .in('id', recipeIds);
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []) as SavedRecipe[];
+}
+
+export async function listSavedRecipes(userId: string): Promise<SavedRecipe[]> {
+  const { data, error } = await supabase
+    .from('recipes')
+    .select('id, user_id, name, description, preparation_time, macros, ingredients, instructions, is_saved')
+    .eq('user_id', userId)
+    .eq('is_saved', true)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []) as SavedRecipe[];
+}
+
+export async function deleteRecipe(userId: string, recipeId: string): Promise<void> {
+  const { error } = await supabase.from('recipes').delete().eq('id', recipeId).eq('user_id', userId);
+  if (error) {
+    throw error;
+  }
+}
+
 export async function logRecipeSwipe(userId: string, recipeId: string, direction: RecipeDirection) {
   const { error: updateError } = await supabase
     .from('recipes')
