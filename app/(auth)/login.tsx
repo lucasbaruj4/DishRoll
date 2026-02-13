@@ -47,6 +47,7 @@ export default function LoginScreen() {
             autoCapitalize="none"
             autoCorrect={false}
             keyboardType="email-address"
+            keyboardAppearance="dark"
             placeholder="you@email.com"
             style={{
               borderWidth: 1,
@@ -66,6 +67,7 @@ export default function LoginScreen() {
             value={password}
             onChangeText={setPassword}
             secureTextEntry
+            keyboardAppearance="dark"
             placeholder="Your password"
             style={{
               borderWidth: 1,
@@ -101,18 +103,10 @@ export default function LoginScreen() {
         </Pressable>
       </View>
 
-      <Link href="/(auth)/signup" asChild>
+      <Link replace href="/(auth)/signup" asChild>
         <Pressable>
           <Text selectable style={{ color: '#f5f5f5', textDecorationLine: 'underline' }}>
             Need an account? Sign up
-          </Text>
-        </Pressable>
-      </Link>
-
-      <Link href="/(auth)/onboarding" asChild>
-        <Pressable>
-          <Text selectable style={{ color: '#f5f5f5', textDecorationLine: 'underline' }}>
-            Back to intro
           </Text>
         </Pressable>
       </Link>

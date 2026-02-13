@@ -1,6 +1,22 @@
 import { Stack } from 'expo-router/stack';
+import { Link } from 'expo-router';
+import { Pressable } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function AuthLayout() {
+  const renderOnboardingBack = () => (
+    <Link replace href="/(auth)/onboarding" asChild>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Go back"
+        hitSlop={10}
+        style={{ paddingHorizontal: 4, paddingVertical: 2 }}
+      >
+        <Ionicons name="chevron-back" size={26} color="#f4f4f4" />
+      </Pressable>
+    </Link>
+  );
+
   return (
     <Stack
       screenOptions={{
@@ -19,12 +35,24 @@ export default function AuthLayout() {
           animationTypeForReplace: 'pop',
         }}
       />
-      <Stack.Screen name="login" options={{ title: 'Log In' }} />
+      <Stack.Screen
+        name="login"
+        options={{
+          title: 'Log In',
+          headerBackTitle: '',
+          headerBackButtonDisplayMode: 'minimal',
+          animationTypeForReplace: 'pop',
+          headerLeft: renderOnboardingBack,
+        }}
+      />
       <Stack.Screen
         name="signup"
         options={{
           title: 'Sign Up',
           headerBackTitle: '',
+          headerBackButtonDisplayMode: 'minimal',
+          animationTypeForReplace: 'pop',
+          headerLeft: renderOnboardingBack,
         }}
       />
       <Stack.Screen

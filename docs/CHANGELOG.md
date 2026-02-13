@@ -1,6 +1,12 @@
 # Changelog
 
 ## 2026-02-13
+- Set auth `TextInput` keyboard appearance to dark on `Sign Up` and `Log In` so iOS keyboard theme matches the dark UI.
+- Added explicit header-left chevron buttons on `Log In` and `Sign Up` that route back to onboarding, ensuring a visible iOS-style back control even when no prior stack entry exists.
+- Ensured auth-screen back affordance stays label-less while preserving iOS chevron styling.
+- Updated `Log In` header back button to chevron-only (no label) and removed the in-screen `Back to intro` link.
+- Switched auth cross-links between `Log In` and `Sign Up` to `replace` navigation and enabled `animationTypeForReplace: 'pop'` on both screens for consistent stack-direction transitions.
+- Updated signup header back button to chevron-only (`headerBackButtonDisplayMode: 'minimal'`) so the `Onboarding` label is not shown.
 - Implemented `Saved` tab data integration with Supabase `recipes` (`is_saved = true`): saved recipes now load on focus/reload, support pull-to-refresh, and can be deleted from the app.
 - Added per-user local persistence for last-used Generate macro/time targets so app reload restores the most recent quick-generation inputs without introducing a global default.
 - Added per-user local active-deck resume state (recipe IDs, swipe index, ingredient signature) and DB-backed hydration on app load so persisted decks continue where users left off after reload.
