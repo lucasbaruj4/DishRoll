@@ -1,6 +1,7 @@
 # Changelog
 
 ## 2026-02-13
+- Replaced bottom-tab selector glyphs with explicit Ionicons for all tabs (`Generate`, `Inventory`, `Saved`, `Profile`) using filled/outline active states for cleaner navigation visuals.
 - Updated Step 3 (cooking level) finish flow to wait until questionnaire completion state is readable before navigating to tabs, preventing brief duplicate return-to-step animations.
 - Improved cooking-level slider touch tracking to use measured track screen coordinates (`pageX`) so grabbing the knob no longer jumps toward the start position.
 - Fixed transition-edge white flash by setting root stack `contentStyle` background to dark and aligning app-level appearance/splash background to dark defaults.
