@@ -256,6 +256,10 @@ npx expo start
 # Make changes → auto-reload on phone
 ```
 
+## Documentation Rule
+
+- When a relevant product, UX, infra, schema, or workflow change is made, add an entry to `docs/CHANGELOG.md` in the same work session.
+
 ## Common Issues
 
 **RLS errors**: Check policies use `auth.uid() = user_id`  
