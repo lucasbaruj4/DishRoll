@@ -371,6 +371,21 @@ export async function getRecipesByIds(userId: string, recipeIds: string[]): Prom
   return (data ?? []) as SavedRecipe[];
 }
 
+export async function getRecipeById(userId: string, recipeId: string): Promise<SavedRecipe | null> {
+  const { data, error } = await supabase
+    .from('recipes')
+    .select('id, user_id, name, description, preparation_time, macros, ingredients, instructions, is_saved')
+    .eq('user_id', userId)
+    .eq('id', recipeId)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return data as SavedRecipe | null;
+}
+
 export async function listSavedRecipes(userId: string): Promise<SavedRecipe[]> {
   const { data, error } = await supabase
     .from('recipes')

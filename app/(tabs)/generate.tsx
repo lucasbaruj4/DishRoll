@@ -1,5 +1,6 @@
 import * as React from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter } from 'expo-router';
 import {
   Animated,
   InteractionManager,
@@ -36,6 +37,8 @@ type RecipeDeckCard = GeneratedRecipeInput & {
 
 const SWIPE_THRESHOLD = 100;
 const SWIPE_VELOCITY_THRESHOLD = 0.65;
+const SWIPE_ANIMATION_DURATION_MS = 150;
+const SWIPE_FINALIZE_GUARD_MS = 260;
 const MACRO_SHEET_FOOTER_BOTTOM_PADDING = 12;
 const SWIPE_TUTORIAL_STORAGE_KEY = 'generate_swipe_tutorial_ack_v1';
 const LAST_USED_MACROS_STORAGE_PREFIX = 'generate_last_used_macros_v1';
@@ -125,6 +128,7 @@ function toLocalDeckCards(recipes: GeneratedRecipeInput[]): RecipeDeckCard[] {
 
 export default function GenerateScreen() {
   const { user } = useAuth();
+  const router = useRouter();
   const { items: catalogItems } = useIngredientCatalog();
   const { availableCatalogIds, loading: ingredientsLoading, refresh: refreshUserIngredients } =
     useUserIngredients();
@@ -158,10 +162,13 @@ export default function GenerateScreen() {
   const [macroFooterHeight, setMacroFooterHeight] = React.useState(0);
   const [swipeTutorialSeen, setSwipeTutorialSeen] = React.useState<boolean | null>(null);
   const [swipeTutorialConfirmed, setSwipeTutorialConfirmed] = React.useState(false);
+  const [outOfSyncModalVisible, setOutOfSyncModalVisible] = React.useState(false);
+  const [outOfSyncModalSeenKey, setOutOfSyncModalSeenKey] = React.useState<string | null>(null);
   const [sessionStateHydrated, setSessionStateHydrated] = React.useState(false);
 
   const drag = React.useRef(new Animated.ValueXY()).current;
   const swipeTutorialAnim = React.useRef(new Animated.Value(0)).current;
+  const swipeFinalizeGuardRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const availableIngredientNames = React.useMemo(() => {
     return catalogItems
@@ -203,7 +210,11 @@ export default function GenerateScreen() {
     hasDeckItems &&
     deckIngredientSignature !== null &&
     deckIngredientSignature !== availableIngredientSignature;
+  const outOfSyncKey = hasUnsyncedRecipes
+    ? `${deckIngredientSignature ?? 'none'}->${availableIngredientSignature}`
+    : null;
   const deckProgress = hasDeckItems ? Math.min((index + 1) / deck.length, 1) : 0;
+  const nextDeckProgress = hasDeckItems ? Math.min((index + 2) / deck.length, 1) : 0;
   const showSwipeTutorial = swipeTutorialSeen === false && hasActiveCard && !macroSheetVisible;
   const macroScrollBottomPadding = MACRO_SHEET_FOOTER_BOTTOM_PADDING;
 
@@ -214,6 +225,15 @@ export default function GenerateScreen() {
       setDidAutoOpenMacroSheet(true);
     }
   }, [didAutoOpenMacroSheet, hasDeckItems, sessionStateHydrated]);
+
+  React.useEffect(() => {
+    if (!outOfSyncKey) {
+      setOutOfSyncModalVisible(false);
+      return;
+    }
+    if (outOfSyncModalSeenKey === outOfSyncKey) return;
+    setOutOfSyncModalVisible(true);
+  }, [outOfSyncKey, outOfSyncModalSeenKey]);
 
   React.useEffect(() => {
     if (!macroSheetVisible) return;
@@ -422,6 +442,14 @@ export default function GenerateScreen() {
     drag.setValue({ x: 0, y: 0 });
   }, [drag, hasActiveCard]);
 
+  React.useEffect(() => {
+    return () => {
+      if (!swipeFinalizeGuardRef.current) return;
+      clearTimeout(swipeFinalizeGuardRef.current);
+      swipeFinalizeGuardRef.current = null;
+    };
+  }, []);
+
   const dismissSwipeTutorial = React.useCallback(async () => {
     if (!swipeTutorialConfirmed) return;
     setSwipeTutorialSeen(true);
@@ -448,6 +476,10 @@ export default function GenerateScreen() {
       setIndex((prev) => prev + 1);
       setSwiping(false);
 
+      if (direction === 'right' && swipedCardPersisted) {
+        router.push(`/recipe/${swipedCardId}`);
+      }
+
       if (!user || !swipedCardPersisted) return;
 
       InteractionManager.runAfterInteractions(() => {
@@ -458,7 +490,7 @@ export default function GenerateScreen() {
         });
       });
     },
-    [user]
+    [router, user]
   );
 
   const triggerSwipe = React.useCallback(
@@ -468,18 +500,35 @@ export default function GenerateScreen() {
       const swipedCardId = currentCard.id;
       const swipedCardPersisted = currentCard.persisted;
       setSwiping(true);
-      Animated.timing(drag, {
-        toValue: { x: direction === 'right' ? width : -width, y: 20 },
-        duration: 150,
-        useNativeDriver: true,
-      }).start(({ finished }) => {
+
+      let settled = false;
+      const settleSwipe = (finished: boolean) => {
+        if (settled) return;
+        settled = true;
+
+        if (swipeFinalizeGuardRef.current) {
+          clearTimeout(swipeFinalizeGuardRef.current);
+          swipeFinalizeGuardRef.current = null;
+        }
+
+        drag.setValue({ x: 0, y: 0 });
         if (!finished) {
-          drag.setValue({ x: 0, y: 0 });
           setSwiping(false);
           return;
         }
-        drag.setValue({ x: 0, y: 0 });
         finalizeSwipe(direction, swipedCardId, swipedCardPersisted);
+      };
+
+      swipeFinalizeGuardRef.current = setTimeout(() => {
+        settleSwipe(true);
+      }, SWIPE_FINALIZE_GUARD_MS);
+
+      Animated.timing(drag, {
+        toValue: { x: direction === 'right' ? width : -width, y: 20 },
+        duration: SWIPE_ANIMATION_DURATION_MS,
+        useNativeDriver: true,
+      }).start(({ finished }) => {
+        settleSwipe(finished);
       });
     },
     [currentCard, drag, finalizeSwipe, swiping, width]
@@ -523,7 +572,14 @@ export default function GenerateScreen() {
         onPanResponderRelease: (_event, gestureState) => {
           handlePanRelease(gestureState.dx, gestureState.vx);
         },
-        onPanResponderTerminate: resetCardPosition,
+        onPanResponderTerminate: () => {
+          if (swipeFinalizeGuardRef.current) {
+            clearTimeout(swipeFinalizeGuardRef.current);
+            swipeFinalizeGuardRef.current = null;
+          }
+          setSwiping(false);
+          resetCardPosition();
+        },
       }),
     [drag, handlePanRelease, hasActiveCard, resetCardPosition, showSwipeTutorial, swiping]
   );
@@ -546,6 +602,21 @@ export default function GenerateScreen() {
   const rightLabelOpacity = drag.x.interpolate({
     inputRange: [0, 40, 140],
     outputRange: [0, 0.2, 1],
+    extrapolate: 'clamp',
+  });
+  const nextCardScale = drag.x.interpolate({
+    inputRange: [-width, 0, width],
+    outputRange: [1, 0.96, 1],
+    extrapolate: 'clamp',
+  });
+  const nextCardTranslateY = drag.x.interpolate({
+    inputRange: [-width, 0, width],
+    outputRange: [0, 14, 0],
+    extrapolate: 'clamp',
+  });
+  const nextCardOpacity = drag.x.interpolate({
+    inputRange: [-width, 0, width],
+    outputRange: [0.92, 0.62, 0.92],
     extrapolate: 'clamp',
   });
 
@@ -755,26 +826,6 @@ export default function GenerateScreen() {
         </View>
       </View>
 
-      {hasUnsyncedRecipes ? (
-        <View
-          style={{
-            borderWidth: 1,
-            borderColor: '#6a5732',
-            backgroundColor: '#241d13',
-            borderRadius: 12,
-            padding: 12,
-            gap: 8,
-          }}
-        >
-          <Text selectable style={{ color: '#f6c574', fontWeight: '700' }}>
-            Not synced recipes
-          </Text>
-          <Text selectable style={{ color: '#dfc18a', lineHeight: 18 }}>
-            Your inventory changed. This deck still uses your previous ingredient set.
-          </Text>
-        </View>
-      ) : null}
-
       {error ? (
         <View
           style={{
@@ -791,41 +842,130 @@ export default function GenerateScreen() {
         </View>
       ) : null}
 
-      <View style={{ flex: 1, minHeight: 420 }}>
+      <View style={{ flex: 1, minHeight: 0 }}>
         {hasActiveCard ? (
-          <View style={{ flex: 1, justifyContent: 'center' }}>
+          <View style={{ flex: 1 }}>
             {nextCard ? (
-              <View
+              <Animated.View
+                pointerEvents="none"
                 style={{
                   position: 'absolute',
                   width: '100%',
-                  transform: [{ scale: 0.96 }],
-                  opacity: 0.62,
+                  opacity: nextCardOpacity,
+                  transform: [{ translateY: nextCardTranslateY }, { scale: nextCardScale }],
                   borderRadius: 18,
                   borderWidth: 1,
-                  borderColor: '#2f2f3d',
-                  backgroundColor: '#1b1b24',
-                  padding: 14,
+                  borderColor: '#303040',
+                  backgroundColor: '#171722',
+                  padding: 12,
+                  gap: 10,
                 }}
               >
-                <Text selectable style={{ color: '#e6e6ee', fontWeight: '700', fontSize: 20 }}>
+                <View
+                  style={{
+                    borderRadius: 14,
+                    overflow: 'hidden',
+                    borderWidth: 1,
+                    borderColor: '#303041',
+                    backgroundColor: '#232333',
+                  }}
+                >
+                  <View
+                    style={{
+                      backgroundColor: '#343246',
+                      paddingHorizontal: 14,
+                      paddingTop: 12,
+                      paddingBottom: 18,
+                    }}
+                  >
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Text selectable style={{ fontSize: 34 }}>
+                        {recipeEmoji(nextCard.name)}
+                      </Text>
+                      <View
+                        style={{
+                          borderRadius: 999,
+                          borderWidth: 1,
+                          borderColor: '#5d5e78',
+                          backgroundColor: '#292b3e',
+                          paddingHorizontal: 10,
+                          paddingVertical: 5,
+                        }}
+                      >
+                        <Text selectable style={{ color: '#e4e7ff', fontWeight: '700', fontSize: 12 }}>
+                          Up next
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                  <View style={{ height: 6, backgroundColor: '#2a2a39' }}>
+                    <View style={{ height: '100%', width: `${nextDeckProgress * 100}%`, backgroundColor: '#8ec1ff' }} />
+                  </View>
+                </View>
+                <Text selectable style={{ color: '#dedee9', fontWeight: '700', fontSize: 21 }}>
                   {nextCard.name}
                 </Text>
-                <Text selectable style={{ color: '#a7a7b1', marginTop: 8 }}>
-                  Up next
+                <Text selectable style={{ color: '#a2a7ba', lineHeight: 20 }}>
+                  {nextCard.description}
                 </Text>
-              </View>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <View
+                    style={{
+                      borderRadius: 999,
+                      backgroundColor: '#20232d',
+                      borderWidth: 1,
+                      borderColor: '#2d3543',
+                      paddingHorizontal: 10,
+                      paddingVertical: 6,
+                    }}
+                  >
+                    <Text selectable style={{ color: '#a7d7ff', fontWeight: '700', fontSize: 12 }}>
+                      P {nextCard.macros.protein}g
+                    </Text>
+                  </View>
+                  <View
+                    style={{
+                      borderRadius: 999,
+                      backgroundColor: '#29251d',
+                      borderWidth: 1,
+                      borderColor: '#413728',
+                      paddingHorizontal: 10,
+                      paddingVertical: 6,
+                    }}
+                  >
+                    <Text selectable style={{ color: '#f5d08c', fontWeight: '700', fontSize: 12 }}>
+                      C {nextCard.macros.carbs}g
+                    </Text>
+                  </View>
+                  <View
+                    style={{
+                      borderRadius: 999,
+                      backgroundColor: '#2d2028',
+                      borderWidth: 1,
+                      borderColor: '#4a303d',
+                      paddingHorizontal: 10,
+                      paddingVertical: 6,
+                    }}
+                  >
+                    <Text selectable style={{ color: '#ffbfd7', fontWeight: '700', fontSize: 12 }}>
+                      F {nextCard.macros.fats}g
+                    </Text>
+                  </View>
+                </View>
+              </Animated.View>
             ) : null}
 
             <Animated.View
               {...panResponder.panHandlers}
               style={{
+                flex: 1,
                 borderRadius: 18,
                 borderWidth: 1,
                 borderColor: '#353544',
                 backgroundColor: '#161620',
                 padding: 12,
                 gap: 10,
+                justifyContent: 'space-between',
                 transform: [{ translateX: drag.x }, { translateY: drag.y }, { rotateZ: rotation }],
               }}
             >
@@ -1124,6 +1264,88 @@ export default function GenerateScreen() {
           Last action: {lastSwipe === 'right' ? 'Saved to collection' : 'Skipped'}
         </Text>
       ) : null}
+
+      <Modal
+        animationType="fade"
+        transparent
+        visible={outOfSyncModalVisible}
+        onRequestClose={() => {
+          if (outOfSyncKey) {
+            setOutOfSyncModalSeenKey(outOfSyncKey);
+          }
+          setOutOfSyncModalVisible(false);
+        }}
+      >
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(5,5,10,0.7)',
+            justifyContent: 'center',
+            paddingHorizontal: 20,
+          }}
+        >
+          <View
+            style={{
+              borderRadius: 16,
+              borderWidth: 1,
+              borderColor: '#6a5732',
+              backgroundColor: '#1a1510',
+              padding: 16,
+              gap: 12,
+            }}
+          >
+            <Text selectable style={{ color: '#f6c574', fontWeight: '700', fontSize: 18 }}>
+              Ingredients changed
+            </Text>
+            <Text selectable style={{ color: '#dfc18a', lineHeight: 20 }}>
+              Your current deck was generated with an older inventory. Do you want to generate new
+              recipes now, or keep swiping this deck?
+            </Text>
+            <View style={{ gap: 8 }}>
+              <Pressable
+                disabled={submitting || ingredientsLoading}
+                onPress={() => {
+                  if (outOfSyncKey) {
+                    setOutOfSyncModalSeenKey(outOfSyncKey);
+                  }
+                  setOutOfSyncModalVisible(false);
+                  void handleGenerate();
+                }}
+                style={{
+                  borderRadius: 12,
+                  backgroundColor: submitting || ingredientsLoading ? '#5f616f' : '#f5f5f5',
+                  paddingVertical: 11,
+                  alignItems: 'center',
+                }}
+              >
+                <Text selectable style={{ color: '#0b0b0f', fontWeight: '700' }}>
+                  {submitting ? 'Generating...' : 'Generate new recipes'}
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => {
+                  if (outOfSyncKey) {
+                    setOutOfSyncModalSeenKey(outOfSyncKey);
+                  }
+                  setOutOfSyncModalVisible(false);
+                }}
+                style={{
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: '#7b6640',
+                  backgroundColor: '#2c2418',
+                  paddingVertical: 11,
+                  alignItems: 'center',
+                }}
+              >
+                <Text selectable style={{ color: '#f3d49a', fontWeight: '700' }}>
+                  Keep current deck
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       <Modal
         animationType="slide"

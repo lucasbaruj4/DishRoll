@@ -1,6 +1,15 @@
 # Changelog
 
 ## 2026-02-14
+- Updated recipe detail header back button to chevron-only (`headerBackButtonDisplayMode: 'minimal'`) so the top-left control no longer shows the previous route label text.
+- Added a new authenticated recipe-detail flow at `app/recipe/[id].tsx` that loads full saved recipe content (description, macros, ingredients, instructions) from Supabase via user-scoped lookup (`getRecipeById`) and displays a floating `Cook with AI` CTA.
+- Wired navigation into recipe detail from both Save events and saved-list browsing: right-swiping a persisted card in `Generate` now opens that recipe, and `Saved` cards now include an `Open recipe` action.
+- Added a placeholder `Cook with AI` route at `app/recipe/[id]/cook.tsx`, including signed-in ownership validation before showing content so future chat work remains recipe-scoped and access-safe.
+- Refocused `Generate` on card swiping by removing the inline out-of-sync warning block from the main layout, expanding the active swipe card to fill more of the stage, and introducing a one-time out-of-sync modal with two explicit choices: `Generate new recipes` or `Keep current deck`.
+- Improved out-of-sync deck recovery UX on `Generate`: added inline warning-card actions (`Change macros`, `Sync deck`) so users can re-sync without scrolling to bottom CTAs, and removed the forced 420px deck min-height so action controls remain reachable on smaller screens.
+- Fixed Generate swipe freeze cases by adding guarded swipe finalization (animation fallback timeout + responder-terminate cleanup), preventing cards from getting stuck half-swiped with interaction locked.
+- Upgraded the preloaded "next" card behind the active swipe card to use the full final card design and added drag-linked forward motion (scale, translate, opacity) so it visibly advances as the top card is swiped away.
+- Ran `context-agents-hi` context sync again: reviewed `AGENTS.md` and all current `docs/*.md`, and logged Agent 582 scope ownership in `docs/COLLABORATION.md`.
 - Fixed the `Adjust macros` keyboard-open spacing regression by disabling `ScrollView` automatic keyboard inset adjustment in the modal (`automaticallyAdjustKeyboardInsets={false}`), avoiding double inset with `KeyboardAvoidingView`.
 - Removed fixed-height sizing from the `Adjust macros` sheet container and stopped forcing `ScrollView` to fill available space, so the modal now wraps content and eliminates the remaining large blank area below `Available ingredients`.
 - Removed remaining empty space below `Available ingredients` in the `Adjust macros` modal by dropping `ScrollView` content `flexGrow` and using a minimal fixed bottom inset (`12`) instead of footer-height-based padding.

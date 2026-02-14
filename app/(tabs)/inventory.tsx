@@ -21,7 +21,7 @@ export default function InventoryScreen() {
     loading: selectionLoading,
     error: selectionError,
     refresh: refreshSelection,
-    setAvailability,
+    setAvailabilityBatch,
   } = useUserIngredients();
   const [query, setQuery] = React.useState('');
   const [pendingChanges, setPendingChanges] = React.useState<Map<string, boolean>>(new Map());
@@ -94,22 +94,16 @@ export default function InventoryScreen() {
     setSavingChanges(true);
     setActionError(null);
 
-    const entries = Array.from(pendingChanges.entries());
-    const committedIds: string[] = [];
     try {
-      for (const [catalogId, next] of entries) {
-        await setAvailability(catalogId, next);
-        committedIds.push(catalogId);
-      }
+      const changes = Array.from(pendingChanges.entries()).map(([catalogId, isAvailable]) => ({
+        catalogId,
+        isAvailable,
+      }));
+      await setAvailabilityBatch(changes);
       setPendingChanges(new Map());
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unable to update ingredient.';
       setActionError(message);
-      setPendingChanges((prev) => {
-        const copy = new Map(prev);
-        committedIds.forEach((catalogId) => copy.delete(catalogId));
-        return copy;
-      });
     } finally {
       setSavingChanges(false);
     }

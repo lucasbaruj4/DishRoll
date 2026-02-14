@@ -1,11 +1,13 @@
 import * as React from 'react';
 import { Alert, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
 import { useAuth } from '../../hooks/useAuth';
 import { deleteRecipe, listSavedRecipes, type SavedRecipe } from '../../services/recipeGenerator';
 
 export default function SavedScreen() {
   const { user } = useAuth();
+  const router = useRouter();
   const [recipes, setRecipes] = React.useState<SavedRecipe[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [refreshing, setRefreshing] = React.useState(false);
@@ -241,23 +243,44 @@ export default function SavedScreen() {
               {recipe.preparation_time} min • {recipe.ingredients.length} ingredients
             </Text>
 
-            <Pressable
-              onPress={() => handleDelete(recipe)}
-              disabled={Boolean(deletingId)}
-              style={{
-                borderRadius: 10,
-                borderWidth: 1,
-                borderColor: '#60323b',
-                backgroundColor: '#2a171c',
-                paddingVertical: 10,
-                alignItems: 'center',
-                opacity: isDeleting ? 0.65 : 1,
-              }}
-            >
-              <Text selectable style={{ color: '#ffb8c3', fontWeight: '700' }}>
-                {isDeleting ? 'Deleting...' : 'Delete'}
-              </Text>
-            </Pressable>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <Pressable
+                onPress={() => router.push(`/recipe/${recipe.id}`)}
+                disabled={Boolean(deletingId)}
+                style={{
+                  flex: 1,
+                  borderRadius: 10,
+                  borderWidth: 1,
+                  borderColor: '#2f4160',
+                  backgroundColor: '#1a2538',
+                  paddingVertical: 10,
+                  alignItems: 'center',
+                  opacity: isDeleting ? 0.65 : 1,
+                }}
+              >
+                <Text selectable style={{ color: '#bfd9ff', fontWeight: '700' }}>
+                  Open recipe
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => handleDelete(recipe)}
+                disabled={Boolean(deletingId)}
+                style={{
+                  flex: 1,
+                  borderRadius: 10,
+                  borderWidth: 1,
+                  borderColor: '#60323b',
+                  backgroundColor: '#2a171c',
+                  paddingVertical: 10,
+                  alignItems: 'center',
+                  opacity: isDeleting ? 0.65 : 1,
+                }}
+              >
+                <Text selectable style={{ color: '#ffb8c3', fontWeight: '700' }}>
+                  {isDeleting ? 'Deleting...' : 'Delete'}
+                </Text>
+              </Pressable>
+            </View>
           </View>
         );
       })}

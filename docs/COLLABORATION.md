@@ -7,4 +7,8 @@
 - Agent 731 | Problem: Remove worklets-dependent swipe implementation causing Generate screen crash | Scope: app/(tabs)/generate.tsx - DONE
 - Agent 731 | Problem: Remove remaining empty space under `Available ingredients` in Adjust macros modal | Scope: app/(tabs)/generate.tsx - DONE
 - Agent 731 | Problem: Remove keyboard-open modal gap by preventing double keyboard inset application | Scope: app/(tabs)/generate.tsx - DONE
-- Agent 349 | Problem: Fix stuck Generate swipes and upgrade next-card preload animation/design | Scope: app/(tabs)/generate.tsx - ACTIVE
+- Agent 349 | Problem: Fix stuck Generate swipes and upgrade next-card preload animation/design | Scope: app/(tabs)/generate.tsx - DONE
+- Agent 582 | Problem: Project context recap via context-agents-hi | Scope: AGENTS.md, docs/*.md - DONE
+- Agent 349 | Problem: Shift Generate focus to bigger swipe cards and replace out-of-sync banner with one-time decision modal | Scope: app/(tabs)/generate.tsx - DONE
+- Agent 349 | Problem: Keep Generate recovery actions reachable without scrolling when deck is out of sync | Scope: app/(tabs)/generate.tsx - DONE
+- Agent 582 | Problem: Add recipe detail flow + Cook with AI entrypoint CTA | Scope: app/recipe/[id].tsx, app/recipe/[id]/cook.tsx, app/(tabs)/saved.tsx, app/(tabs)/generate.tsx, services/recipeGenerator.ts - DONE

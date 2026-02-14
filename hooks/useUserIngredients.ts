@@ -10,6 +10,11 @@ export type UserIngredient = {
   source: 'questionnaire' | 'manual';
 };
 
+type AvailabilityChange = {
+  catalogId: string;
+  isAvailable: boolean;
+};
+
 export function useUserIngredients() {
   const { user, loading: authLoading } = useAuth();
   const [items, setItems] = React.useState<UserIngredient[]>([]);
@@ -91,6 +96,47 @@ export function useUserIngredients() {
     }
   };
 
+  const setAvailabilityBatch = async (changes: AvailabilityChange[]) => {
+    if (!user) throw new Error('Not authenticated.');
+    if (changes.length === 0) return;
+
+    const latestByCatalogId = new Map<string, boolean>();
+    for (const change of changes) {
+      if (!change.catalogId) continue;
+      latestByCatalogId.set(change.catalogId, change.isAvailable);
+    }
+    if (latestByCatalogId.size === 0) return;
+
+    const existingByCatalogId = new Map(items.map((item) => [item.catalog_id, item]));
+    const rows = Array.from(latestByCatalogId.entries()).map(([catalogId, isAvailable]) => {
+      const existing = existingByCatalogId.get(catalogId);
+      return {
+        user_id: user.id,
+        catalog_id: catalogId,
+        is_available: isAvailable,
+        source: existing?.source ?? 'manual',
+      };
+    });
+
+    const { data, error } = await supabase
+      .from('user_ingredients')
+      .upsert(rows, { onConflict: 'user_id,catalog_id' })
+      .select('id, user_id, catalog_id, is_available, source');
+
+    if (error) throw error;
+
+    const updatedRows = (data ?? []) as UserIngredient[];
+    if (updatedRows.length === 0) return;
+
+    setItems((prev) => {
+      const byCatalogId = new Map(prev.map((item) => [item.catalog_id, item]));
+      for (const row of updatedRows) {
+        byCatalogId.set(row.catalog_id, row);
+      }
+      return Array.from(byCatalogId.values());
+    });
+  };
+
   const availableCatalogIds = React.useMemo(() => {
     const set = new Set<string>();
     for (const item of items) {
@@ -106,5 +152,6 @@ export function useUserIngredients() {
     error,
     refresh,
     setAvailability,
+    setAvailabilityBatch,
   };
 }
