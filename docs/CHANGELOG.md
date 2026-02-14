@@ -1,6 +1,10 @@
 # Changelog
 
 ## 2026-02-14
+- Refined recipe-detail typography hierarchy so section titles (`Macros`, `Ingredients`, `Instructions`) are larger/heavier than body lines, and reduced body boldness for clearer title-vs-content distinction while preserving readability.
+- Updated recipe detail hero/title section to an unboxed layout with larger typography for name, description, and prep time, and increased instruction-step typography to match the larger ingredient list style.
+- Updated recipe detail `Macros` and `Ingredients` presentation: removed boxed section wrappers, switched macros to a larger 2x2 square-card layout (matching the change-macros visual pattern), and increased ingredient text size in a plain numbered list format.
+- Simplified recipe detail instruction rendering to plain numbered text lines (removed boxed instruction cards and section panel styling) for a cleaner reading flow while cooking.
 - Updated recipe detail header back button to chevron-only (`headerBackButtonDisplayMode: 'minimal'`) so the top-left control no longer shows the previous route label text.
 - Added a new authenticated recipe-detail flow at `app/recipe/[id].tsx` that loads full saved recipe content (description, macros, ingredients, instructions) from Supabase via user-scoped lookup (`getRecipeById`) and displays a floating `Cook with AI` CTA.
 - Wired navigation into recipe detail from both Save events and saved-list browsing: right-swiping a persisted card in `Generate` now opens that recipe, and `Saved` cards now include an `Open recipe` action.

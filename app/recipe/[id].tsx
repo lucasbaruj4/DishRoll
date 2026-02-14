@@ -4,6 +4,7 @@ import {
   Pressable,
   ScrollView,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
@@ -28,6 +29,7 @@ export default function RecipeDetailScreen() {
   }, [id]);
   const { user, loading: authLoading } = useAuth();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
   const router = useRouter();
 
   const [recipe, setRecipe] = React.useState<SavedRecipe | null>(null);
@@ -79,6 +81,8 @@ export default function RecipeDetailScreen() {
       ? recipe.macros.calories
       : recipe.macros.protein * 4 + recipe.macros.carbs * 4 + recipe.macros.fats * 9
     : 0;
+  const macroGridColumns = width <= 340 ? 1 : 2;
+  const macroCardBasis = macroGridColumns === 1 ? '100%' : '48%';
 
   return (
     <View style={{ flex: 1, backgroundColor: '#0b0b0f' }}>
@@ -161,186 +165,160 @@ export default function RecipeDetailScreen() {
 
         {!loading && recipe ? (
           <>
-            <View
-              style={{
-                borderRadius: 18,
-                borderWidth: 1,
-                borderColor: '#1f1f27',
-                backgroundColor: '#121218',
-                padding: 16,
-                gap: 10,
-              }}
-            >
+            <View style={{ gap: 10 }}>
               <Text selectable style={{ color: '#8f8f98', fontSize: 12, letterSpacing: 1.6 }}>
                 COMPLETE RECIPE
               </Text>
-              <Text selectable style={{ color: '#f4f4f4', fontWeight: '700', fontSize: 27 }}>
+              <Text selectable style={{ color: '#f4f4f4', fontWeight: '800', fontSize: 34, lineHeight: 38 }}>
                 {recipe.name}
               </Text>
-              <Text selectable style={{ color: '#b8b8c1', lineHeight: 21 }}>
+              <Text selectable style={{ color: '#c0c0cc', fontSize: 22, lineHeight: 30 }}>
                 {recipe.description}
               </Text>
-              <Text selectable style={{ color: '#9292a0' }}>
+              <Text selectable style={{ color: '#9a9aac', fontSize: 18 }}>
                 Prep time: {recipe.preparation_time} min
               </Text>
             </View>
 
-            <View
-              style={{
-                borderRadius: 14,
-                borderWidth: 1,
-                borderColor: '#23232d',
-                backgroundColor: '#111118',
-                padding: 14,
-                gap: 10,
-              }}
-            >
-              <Text selectable style={{ color: '#f4f4f4', fontSize: 18, fontWeight: '700' }}>
+            <View style={{ gap: 10 }}>
+              <Text
+                selectable
+                style={{ color: '#f4f4f4', fontSize: 30, lineHeight: 34, fontWeight: '800' }}
+              >
                 Macros
               </Text>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
                 <View
                   style={{
-                    borderRadius: 999,
+                    flexBasis: macroCardBasis,
+                    minHeight: 120,
+                    borderRadius: 14,
                     borderWidth: 1,
                     borderColor: '#2f3950',
                     backgroundColor: '#1d2533',
-                    paddingHorizontal: 10,
-                    paddingVertical: 6,
+                    paddingHorizontal: 12,
+                    paddingVertical: 12,
+                    justifyContent: 'space-between',
                   }}
                 >
-                  <Text selectable style={{ color: '#a9d8ff', fontWeight: '700', fontSize: 12 }}>
-                    P {recipe.macros.protein}g
+                  <Text selectable style={{ color: '#b8dcff', fontSize: 13, fontWeight: '600' }}>
+                    Protein
+                  </Text>
+                  <Text selectable style={{ color: '#d9edff', fontSize: 34, fontWeight: '800' }}>
+                    {recipe.macros.protein}g
                   </Text>
                 </View>
                 <View
                   style={{
-                    borderRadius: 999,
+                    flexBasis: macroCardBasis,
+                    minHeight: 120,
+                    borderRadius: 14,
                     borderWidth: 1,
                     borderColor: '#4a3b24',
                     backgroundColor: '#2b2418',
-                    paddingHorizontal: 10,
-                    paddingVertical: 6,
+                    paddingHorizontal: 12,
+                    paddingVertical: 12,
+                    justifyContent: 'space-between',
                   }}
                 >
-                  <Text selectable style={{ color: '#f4d08b', fontWeight: '700', fontSize: 12 }}>
-                    C {recipe.macros.carbs}g
+                  <Text selectable style={{ color: '#f3ddb2', fontSize: 13, fontWeight: '600' }}>
+                    Carbs
+                  </Text>
+                  <Text selectable style={{ color: '#fff0d0', fontSize: 34, fontWeight: '800' }}>
+                    {recipe.macros.carbs}g
                   </Text>
                 </View>
                 <View
                   style={{
-                    borderRadius: 999,
+                    flexBasis: macroCardBasis,
+                    minHeight: 120,
+                    borderRadius: 14,
                     borderWidth: 1,
                     borderColor: '#4d3041',
                     backgroundColor: '#2a1c26',
-                    paddingHorizontal: 10,
-                    paddingVertical: 6,
+                    paddingHorizontal: 12,
+                    paddingVertical: 12,
+                    justifyContent: 'space-between',
                   }}
                 >
-                  <Text selectable style={{ color: '#ffc1d9', fontWeight: '700', fontSize: 12 }}>
-                    F {recipe.macros.fats}g
+                  <Text selectable style={{ color: '#f0c3d5', fontSize: 13, fontWeight: '600' }}>
+                    Fats
+                  </Text>
+                  <Text selectable style={{ color: '#ffdcec', fontSize: 34, fontWeight: '800' }}>
+                    {recipe.macros.fats}g
                   </Text>
                 </View>
                 <View
                   style={{
-                    borderRadius: 999,
+                    flexBasis: macroCardBasis,
+                    minHeight: 120,
+                    borderRadius: 14,
                     borderWidth: 1,
                     borderColor: '#30423a',
                     backgroundColor: '#1d2b26',
-                    paddingHorizontal: 10,
-                    paddingVertical: 6,
+                    paddingHorizontal: 12,
+                    paddingVertical: 12,
+                    justifyContent: 'space-between',
                   }}
                 >
-                  <Text selectable style={{ color: '#bde9d6', fontWeight: '700', fontSize: 12 }}>
-                    {Math.round(calories)} kcal
+                  <Text selectable style={{ color: '#cae9dc', fontSize: 13, fontWeight: '600' }}>
+                    Calories
+                  </Text>
+                  <Text selectable style={{ color: '#d8fff0', fontSize: 34, fontWeight: '800' }}>
+                    {Math.round(calories)}
                   </Text>
                 </View>
               </View>
             </View>
 
-            <View
-              style={{
-                borderRadius: 14,
-                borderWidth: 1,
-                borderColor: '#23232d',
-                backgroundColor: '#111118',
-                padding: 14,
-                gap: 10,
-              }}
-            >
-              <Text selectable style={{ color: '#f4f4f4', fontSize: 18, fontWeight: '700' }}>
+            <View style={{ gap: 10 }}>
+              <Text
+                selectable
+                style={{ color: '#f4f4f4', fontSize: 30, lineHeight: 34, fontWeight: '800' }}
+              >
                 Ingredients
               </Text>
               {recipe.ingredients.map((ingredient, idx) => {
                 const amount = formatIngredientAmount(ingredient.amount, ingredient.unit);
                 return (
-                  <View
+                  <Text
                     key={`${ingredient.name}-${idx}`}
-                    style={{
-                      borderRadius: 10,
-                      borderWidth: 1,
-                      borderColor: '#232332',
-                      backgroundColor: '#171722',
-                      paddingHorizontal: 12,
-                      paddingVertical: 10,
-                      gap: 4,
-                    }}
+                    selectable
+                    style={{ color: '#e5e5ef', lineHeight: 30, fontSize: 22, fontWeight: '500' }}
                   >
-                    <Text selectable style={{ color: '#ececf3', fontWeight: '600', fontSize: 15 }}>
-                      {ingredient.name}
-                    </Text>
+                    <Text selectable style={{ color: '#9fd2ff', fontWeight: '700' }}>
+                      {idx + 1}.
+                    </Text>{' '}
+                    {ingredient.name}
                     {amount ? (
-                      <Text selectable style={{ color: '#9b9ba8', fontSize: 13 }}>
-                        {amount}
+                      <Text selectable style={{ color: '#a5a5b3', fontSize: 18, fontWeight: '400' }}>
+                        {' '}
+                        ({amount})
                       </Text>
                     ) : null}
-                  </View>
+                  </Text>
                 );
               })}
             </View>
 
-            <View
-              style={{
-                borderRadius: 14,
-                borderWidth: 1,
-                borderColor: '#23232d',
-                backgroundColor: '#111118',
-                padding: 14,
-                gap: 10,
-              }}
-            >
-              <Text selectable style={{ color: '#f4f4f4', fontSize: 18, fontWeight: '700' }}>
+            <View style={{ gap: 10 }}>
+              <Text
+                selectable
+                style={{ color: '#f4f4f4', fontSize: 30, lineHeight: 34, fontWeight: '800' }}
+              >
                 Instructions
               </Text>
               {recipe.instructions.map((instruction, idx) => (
-                <View
+                <Text
                   key={`${idx}-${instruction.slice(0, 24)}`}
-                  style={{
-                    borderRadius: 10,
-                    borderWidth: 1,
-                    borderColor: '#232332',
-                    backgroundColor: '#171722',
-                    paddingHorizontal: 12,
-                    paddingVertical: 10,
-                    flexDirection: 'row',
-                    gap: 10,
-                  }}
+                  selectable
+                  style={{ color: '#e5e5ef', lineHeight: 30, fontSize: 22, fontWeight: '500' }}
                 >
-                  <Text
-                    selectable
-                    style={{
-                      color: '#9fd2ff',
-                      fontWeight: '700',
-                      minWidth: 20,
-                      textAlign: 'center',
-                    }}
-                  >
-                    {idx + 1}
-                  </Text>
-                  <Text selectable style={{ color: '#d8d8e2', lineHeight: 20, flex: 1 }}>
-                    {instruction}
-                  </Text>
-                </View>
+                  <Text selectable style={{ color: '#9fd2ff', fontWeight: '700' }}>
+                    {idx + 1}.
+                  </Text>{' '}
+                  {instruction}
+                </Text>
               ))}
             </View>
           </>
