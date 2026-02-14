@@ -2,8 +2,9 @@ import * as React from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   Animated,
-  InputAccessoryView,
+  InteractionManager,
   Keyboard,
+  KeyboardAvoidingView,
   Modal,
   PanResponder,
   Platform,
@@ -33,8 +34,9 @@ type RecipeDeckCard = GeneratedRecipeInput & {
   persisted: boolean;
 };
 
-const SWIPE_THRESHOLD = 110;
-const MACRO_INPUT_ACCESSORY_ID = 'macro-input-toolbar';
+const SWIPE_THRESHOLD = 100;
+const SWIPE_VELOCITY_THRESHOLD = 0.65;
+const MACRO_SHEET_FOOTER_BOTTOM_PADDING = 12;
 const SWIPE_TUTORIAL_STORAGE_KEY = 'generate_swipe_tutorial_ack_v1';
 const LAST_USED_MACROS_STORAGE_PREFIX = 'generate_last_used_macros_v1';
 const ACTIVE_DECK_STORAGE_PREFIX = 'generate_active_deck_v1';
@@ -126,7 +128,16 @@ export default function GenerateScreen() {
   const { items: catalogItems } = useIngredientCatalog();
   const { availableCatalogIds, loading: ingredientsLoading, refresh: refreshUserIngredients } =
     useUserIngredients();
-  const { width, height: windowHeight } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
+  const isSmallPhone = width <= 375;
+  const isTinyPhone = width <= 340;
+  const macroGridColumns = isTinyPhone ? 1 : 2;
+  const macroGridGap = isSmallPhone ? 8 : 10;
+  const macroCardBasis = macroGridColumns === 1 ? '100%' : '48%';
+  const macroCardMinHeight = isSmallPhone ? 116 : 132;
+  const macroValueFontSize = isTinyPhone ? 34 : isSmallPhone ? 38 : 44;
+  const macroValueLineHeight = isTinyPhone ? 40 : isSmallPhone ? 44 : 50;
+  const macroSheetHeight = Math.round(height * (isSmallPhone ? 0.94 : 0.9));
   const [protein, setProtein] = React.useState(INITIAL_MACROS.protein);
   const [carbs, setCarbs] = React.useState(INITIAL_MACROS.carbs);
   const [fats, setFats] = React.useState(INITIAL_MACROS.fats);
@@ -144,7 +155,7 @@ export default function GenerateScreen() {
   const [carbsInput, setCarbsInput] = React.useState(String(carbs));
   const [fatsInput, setFatsInput] = React.useState(String(fats));
   const [timeInput, setTimeInput] = React.useState(String(timeLimit));
-  const [keyboardInset, setKeyboardInset] = React.useState(0);
+  const [macroFooterHeight, setMacroFooterHeight] = React.useState(0);
   const [swipeTutorialSeen, setSwipeTutorialSeen] = React.useState<boolean | null>(null);
   const [swipeTutorialConfirmed, setSwipeTutorialConfirmed] = React.useState(false);
   const [sessionStateHydrated, setSessionStateHydrated] = React.useState(false);
@@ -194,6 +205,7 @@ export default function GenerateScreen() {
     deckIngredientSignature !== availableIngredientSignature;
   const deckProgress = hasDeckItems ? Math.min((index + 1) / deck.length, 1) : 0;
   const showSwipeTutorial = swipeTutorialSeen === false && hasActiveCard && !macroSheetVisible;
+  const macroScrollBottomPadding = MACRO_SHEET_FOOTER_BOTTOM_PADDING;
 
   React.useEffect(() => {
     if (!sessionStateHydrated) return;
@@ -210,37 +222,6 @@ export default function GenerateScreen() {
     setFatsInput(String(fats));
     setTimeInput(String(timeLimit));
   }, [carbs, fats, macroSheetVisible, protein, timeLimit]);
-
-  React.useEffect(() => {
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-
-    const onKeyboardShow = (event: { endCoordinates?: { height?: number; screenY?: number } }) => {
-      const screenY = event.endCoordinates?.screenY;
-      if (typeof screenY === 'number') {
-        setKeyboardInset(Math.max(0, windowHeight - screenY));
-        return;
-      }
-
-      const rawHeight = event.endCoordinates?.height;
-      if (typeof rawHeight === 'number') {
-        setKeyboardInset(Math.max(0, rawHeight));
-        return;
-      }
-
-      setKeyboardInset(0);
-    };
-
-    const onKeyboardHide = () => setKeyboardInset(0);
-
-    const showSub = Keyboard.addListener(showEvent, onKeyboardShow);
-    const hideSub = Keyboard.addListener(hideEvent, onKeyboardHide);
-
-    return () => {
-      showSub.remove();
-      hideSub.remove();
-    };
-  }, [windowHeight]);
 
   React.useEffect(() => {
     let alive = true;
@@ -436,6 +417,11 @@ export default function GenerateScreen() {
     };
   }, [showSwipeTutorial, swipeTutorialAnim]);
 
+  React.useEffect(() => {
+    if (hasActiveCard) return;
+    drag.setValue({ x: 0, y: 0 });
+  }, [drag, hasActiveCard]);
+
   const dismissSwipeTutorial = React.useCallback(async () => {
     if (!swipeTutorialConfirmed) return;
     setSwipeTutorialSeen(true);
@@ -446,103 +432,122 @@ export default function GenerateScreen() {
     }
   }, [swipeTutorialConfirmed]);
 
-  const rotate = drag.x.interpolate({
-    inputRange: [-220, 0, 220],
-    outputRange: ['-12deg', '0deg', '12deg'],
-  });
-
-  const swipeLabelOpacity = drag.x.interpolate({
-    inputRange: [-140, -40, 40, 140],
-    outputRange: [1, 0, 0, 1],
-  });
-
-  const leftLabelOpacity = drag.x.interpolate({
-    inputRange: [-140, -40, 0],
-    outputRange: [1, 0.2, 0],
-    extrapolate: 'clamp',
-  });
-
-  const rightLabelOpacity = drag.x.interpolate({
-    inputRange: [0, 40, 140],
-    outputRange: [0, 0.2, 1],
-    extrapolate: 'clamp',
-  });
-
   const resetCardPosition = React.useCallback(() => {
     Animated.spring(drag, {
       toValue: { x: 0, y: 0 },
-      useNativeDriver: false,
       bounciness: 8,
       speed: 18,
+      useNativeDriver: true,
     }).start();
   }, [drag]);
 
   const finalizeSwipe = React.useCallback(
-    async (direction: RecipeDirection) => {
-      if (!user || !currentCard) return;
-
-      setSwiping(true);
+    (direction: RecipeDirection, swipedCardId: string, swipedCardPersisted: boolean) => {
       setError(null);
-      try {
-        if (currentCard.persisted) {
-          await logRecipeSwipe(user.id, currentCard.id, direction);
-        }
-        setLastSwipe(direction);
-        setIndex((prev) => prev + 1);
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to save swipe.';
-        setError(message);
-      } finally {
-        drag.setValue({ x: 0, y: 0 });
-        setSwiping(false);
-      }
+      setLastSwipe(direction);
+      setIndex((prev) => prev + 1);
+      setSwiping(false);
+
+      if (!user || !swipedCardPersisted) return;
+
+      InteractionManager.runAfterInteractions(() => {
+        void logRecipeSwipe(user.id, swipedCardId, direction).catch((err) => {
+          const message =
+            err instanceof Error ? err.message : 'Swipe saved locally, but sync failed.';
+          setError(message);
+        });
+      });
     },
-    [currentCard, drag, user]
+    [user]
   );
 
   const triggerSwipe = React.useCallback(
     (direction: RecipeDirection) => {
       if (!currentCard || swiping) return;
+
+      const swipedCardId = currentCard.id;
+      const swipedCardPersisted = currentCard.persisted;
+      setSwiping(true);
       Animated.timing(drag, {
         toValue: { x: direction === 'right' ? width : -width, y: 20 },
-        duration: 170,
-        useNativeDriver: false,
-      }).start(() => {
-        void finalizeSwipe(direction);
+        duration: 150,
+        useNativeDriver: true,
+      }).start(({ finished }) => {
+        if (!finished) {
+          drag.setValue({ x: 0, y: 0 });
+          setSwiping(false);
+          return;
+        }
+        drag.setValue({ x: 0, y: 0 });
+        finalizeSwipe(direction, swipedCardId, swipedCardPersisted);
       });
     },
     [currentCard, drag, finalizeSwipe, swiping, width]
   );
 
+  const handlePanRelease = React.useCallback(
+    (dx: number, vx: number) => {
+      if (!currentCard || swiping) {
+        resetCardPosition();
+        return;
+      }
+
+      const flickRight = vx > SWIPE_VELOCITY_THRESHOLD && dx > SWIPE_THRESHOLD / 3;
+      const flickLeft = vx < -SWIPE_VELOCITY_THRESHOLD && dx < -SWIPE_THRESHOLD / 3;
+
+      if (dx > SWIPE_THRESHOLD || flickRight) {
+        triggerSwipe('right');
+        return;
+      }
+      if (dx < -SWIPE_THRESHOLD || flickLeft) {
+        triggerSwipe('left');
+        return;
+      }
+
+      resetCardPosition();
+    },
+    [currentCard, resetCardPosition, swiping, triggerSwipe]
+  );
+
   const panResponder = React.useMemo(
     () =>
       PanResponder.create({
-        onStartShouldSetPanResponder: () => Boolean(currentCard),
-        onMoveShouldSetPanResponder: (_, gestureState) =>
-          Boolean(currentCard) &&
-          Math.abs(gestureState.dx) > 8 &&
-          Math.abs(gestureState.dx) > Math.abs(gestureState.dy),
-        onPanResponderMove: Animated.event([null, { dx: drag.x, dy: drag.y }], {
-          useNativeDriver: false,
-        }),
-        onPanResponderRelease: (_, gestureState) => {
-          if (!currentCard) {
-            resetCardPosition();
-            return;
-          }
-          if (gestureState.dx > SWIPE_THRESHOLD) {
-            triggerSwipe('right');
-            return;
-          }
-          if (gestureState.dx < -SWIPE_THRESHOLD) {
-            triggerSwipe('left');
-            return;
-          }
-          resetCardPosition();
+        onMoveShouldSetPanResponder: (_event, gestureState) => {
+          if (!hasActiveCard || showSwipeTutorial || swiping) return false;
+          const horizontalIntent = Math.abs(gestureState.dx) > Math.abs(gestureState.dy);
+          return horizontalIntent && Math.abs(gestureState.dx) > 8;
         },
+        onPanResponderMove: (_event, gestureState) => {
+          drag.setValue({ x: gestureState.dx, y: gestureState.dy });
+        },
+        onPanResponderRelease: (_event, gestureState) => {
+          handlePanRelease(gestureState.dx, gestureState.vx);
+        },
+        onPanResponderTerminate: resetCardPosition,
       }),
-    [currentCard, drag.x, drag.y, resetCardPosition, triggerSwipe]
+    [drag, handlePanRelease, hasActiveCard, resetCardPosition, showSwipeTutorial, swiping]
   );
+
+  const rotation = drag.x.interpolate({
+    inputRange: [-220, 0, 220],
+    outputRange: ['-12deg', '0deg', '12deg'],
+    extrapolate: 'clamp',
+  });
+  const swipeLabelOpacity = drag.x.interpolate({
+    inputRange: [-140, -40, 40, 140],
+    outputRange: [1, 0, 0, 1],
+    extrapolate: 'clamp',
+  });
+  const leftLabelOpacity = drag.x.interpolate({
+    inputRange: [-140, -40, 0],
+    outputRange: [1, 0.2, 0],
+    extrapolate: 'clamp',
+  });
+  const rightLabelOpacity = drag.x.interpolate({
+    inputRange: [0, 40, 140],
+    outputRange: [0, 0.2, 1],
+    extrapolate: 'clamp',
+  });
 
   const commitInputs = React.useCallback(() => {
     const nextProtein = parseBoundedInt(proteinInput, protein, 20, 300);
@@ -649,7 +654,8 @@ export default function GenerateScreen() {
     value: string,
     unit: string,
     onChangeText: (next: string) => void,
-    onBlur: () => void
+    onBlur: () => void,
+    compact = false
   ) => (
     <View
       style={{
@@ -658,29 +664,36 @@ export default function GenerateScreen() {
         backgroundColor: '#121218',
         borderRadius: 12,
         paddingHorizontal: 12,
-        paddingVertical: 10,
+        paddingVertical: compact ? 12 : 10,
         gap: 6,
+        ...(compact
+          ? {
+              flexBasis: macroCardBasis,
+              minHeight: macroCardMinHeight,
+              justifyContent: 'space-between',
+            }
+          : null),
       }}
     >
       <Text selectable style={{ color: '#a8a8b3', fontSize: 12 }}>
         {label}
       </Text>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8 }}>
         <TextInput
           value={value}
           keyboardType="number-pad"
-          inputAccessoryViewID={MACRO_INPUT_ACCESSORY_ID}
           onChangeText={(text) => onChangeText(digitsOnly(text))}
           onBlur={onBlur}
           style={{
             flex: 1,
             color: '#f5f5f5',
-            fontSize: 28,
+            fontSize: compact ? macroValueFontSize : 28,
             fontWeight: '700',
             paddingVertical: 0,
+            lineHeight: compact ? macroValueLineHeight : 34,
           }}
         />
-        <Text selectable style={{ color: '#8f8f98', fontWeight: '600' }}>
+        <Text selectable style={{ color: '#8f8f98', fontWeight: '700', marginBottom: 6 }}>
           {unit}
         </Text>
       </View>
@@ -692,7 +705,7 @@ export default function GenerateScreen() {
         style={{
           paddingTop: 8,
           flexDirection: 'row',
-          justifyContent: 'space-between',
+          justifyContent: 'flex-start',
           alignItems: 'center',
         }}
       >
@@ -704,21 +717,6 @@ export default function GenerateScreen() {
             Generate
           </Text>
         </View>
-        <Pressable
-          onPress={() => setMacroSheetVisible(true)}
-          style={{
-            borderRadius: 12,
-            borderWidth: 1,
-            borderColor: '#2f2f3d',
-            backgroundColor: '#161620',
-            paddingVertical: 10,
-            paddingHorizontal: 12,
-          }}
-        >
-          <Text selectable style={{ color: '#e2e2ea', fontWeight: '700' }}>
-            Change macros
-          </Text>
-        </Pressable>
       </View>
 
       <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
@@ -828,133 +826,136 @@ export default function GenerateScreen() {
                 backgroundColor: '#161620',
                 padding: 12,
                 gap: 10,
-                transform: [{ translateX: drag.x }, { translateY: drag.y }, { rotate }],
+                transform: [{ translateX: drag.x }, { translateY: drag.y }, { rotateZ: rotation }],
               }}
             >
               <Animated.View style={{ opacity: swipeLabelOpacity }}>
                 <View style={{ flexDirection: 'row', marginBottom: 6, justifyContent: 'space-between' }}>
-                  <Animated.Text
-                    selectable
-                    style={{
-                      color: '#ff9eaa',
-                      fontWeight: '700',
-                      fontSize: 12,
-                      letterSpacing: 1.2,
-                      opacity: leftLabelOpacity,
-                    }}
-                  >
-                    SKIP
-                  </Animated.Text>
-                  <Animated.Text
-                    selectable
-                    style={{
-                      color: '#9ef4c7',
-                      fontWeight: '700',
-                      fontSize: 12,
-                      letterSpacing: 1.2,
-                      opacity: rightLabelOpacity,
-                    }}
-                  >
-                    SAVE
-                  </Animated.Text>
+                  <Animated.View style={{ opacity: leftLabelOpacity }}>
+                      <Text
+                        selectable
+                        style={{
+                          color: '#ff9eaa',
+                          fontWeight: '700',
+                          fontSize: 12,
+                          letterSpacing: 1.2,
+                        }}
+                      >
+                        SKIP
+                      </Text>
+                  </Animated.View>
+                  <Animated.View style={{ opacity: rightLabelOpacity }}>
+                      <Text
+                        selectable
+                        style={{
+                          color: '#9ef4c7',
+                          fontWeight: '700',
+                          fontSize: 12,
+                          letterSpacing: 1.2,
+                        }}
+                      >
+                        SAVE
+                      </Text>
+                  </Animated.View>
                 </View>
               </Animated.View>
 
-              <View
-                style={{
-                  borderRadius: 14,
-                  overflow: 'hidden',
-                  borderWidth: 1,
-                  borderColor: '#303041',
-                  backgroundColor: '#232333',
-                }}
-              >
                 <View
                   style={{
-                    backgroundColor: '#3a2e2f',
-                    paddingHorizontal: 14,
-                    paddingTop: 12,
-                    paddingBottom: 18,
+                    borderRadius: 14,
+                    overflow: 'hidden',
+                    borderWidth: 1,
+                    borderColor: '#303041',
+                    backgroundColor: '#232333',
                   }}
                 >
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Text selectable style={{ fontSize: 38 }}>
-                      {recipeEmoji(currentCard.name)}
-                    </Text>
-                    <View
-                      style={{
-                        borderRadius: 999,
-                        borderWidth: 1,
-                        borderColor: '#6f5a5d',
-                        backgroundColor: '#2a2122',
-                        paddingHorizontal: 10,
-                        paddingVertical: 5,
-                      }}
-                    >
-                      <Text selectable style={{ color: '#f1e3e3', fontWeight: '700', fontSize: 12 }}>
-                        {currentCard.preparation_time} min
+                  <View
+                    style={{
+                      backgroundColor: '#3a2e2f',
+                      paddingHorizontal: 14,
+                      paddingTop: 12,
+                      paddingBottom: 18,
+                    }}
+                  >
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Text selectable style={{ fontSize: 38 }}>
+                        {recipeEmoji(currentCard.name)}
                       </Text>
+                      <View
+                        style={{
+                          borderRadius: 999,
+                          borderWidth: 1,
+                          borderColor: '#6f5a5d',
+                          backgroundColor: '#2a2122',
+                          paddingHorizontal: 10,
+                          paddingVertical: 5,
+                        }}
+                      >
+                        <Text selectable style={{ color: '#f1e3e3', fontWeight: '700', fontSize: 12 }}>
+                          {currentCard.preparation_time} min
+                        </Text>
+                      </View>
                     </View>
                   </View>
+                  <View style={{ height: 6, backgroundColor: '#2a2a39' }}>
+                    <View
+                      style={{ height: '100%', width: `${deckProgress * 100}%`, backgroundColor: '#98eec2' }}
+                    />
+                  </View>
                 </View>
-                <View style={{ height: 6, backgroundColor: '#2a2a39' }}>
-                  <View style={{ height: '100%', width: `${deckProgress * 100}%`, backgroundColor: '#98eec2' }} />
+                <Text selectable style={{ color: '#f5f5f5', fontWeight: '700', fontSize: 22 }}>
+                  {currentCard.name}
+                </Text>
+                <Text selectable style={{ color: '#b8b8c0', lineHeight: 20 }}>
+                  {currentCard.description}
+                </Text>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <View
+                    style={{
+                      borderRadius: 999,
+                      backgroundColor: '#20232d',
+                      borderWidth: 1,
+                      borderColor: '#2d3543',
+                      paddingHorizontal: 10,
+                      paddingVertical: 6,
+                    }}
+                  >
+                    <Text selectable style={{ color: '#a7d7ff', fontWeight: '700', fontSize: 12 }}>
+                      P {currentCard.macros.protein}g
+                    </Text>
+                  </View>
+                  <View
+                    style={{
+                      borderRadius: 999,
+                      backgroundColor: '#29251d',
+                      borderWidth: 1,
+                      borderColor: '#413728',
+                      paddingHorizontal: 10,
+                      paddingVertical: 6,
+                    }}
+                  >
+                    <Text selectable style={{ color: '#f5d08c', fontWeight: '700', fontSize: 12 }}>
+                      C {currentCard.macros.carbs}g
+                    </Text>
+                  </View>
+                  <View
+                    style={{
+                      borderRadius: 999,
+                      backgroundColor: '#2d2028',
+                      borderWidth: 1,
+                      borderColor: '#4a303d',
+                      paddingHorizontal: 10,
+                      paddingVertical: 6,
+                    }}
+                  >
+                    <Text selectable style={{ color: '#ffbfd7', fontWeight: '700', fontSize: 12 }}>
+                      F {currentCard.macros.fats}g
+                    </Text>
+                  </View>
                 </View>
-              </View>
-
-              <Text selectable style={{ color: '#f5f5f5', fontWeight: '700', fontSize: 22 }}>
-                {currentCard.name}
-              </Text>
-              <Text selectable style={{ color: '#b8b8c0', lineHeight: 20 }}>
-                {currentCard.description}
-              </Text>
-              <View style={{ flexDirection: 'row', gap: 8 }}>
-                <View
-                  style={{
-                    borderRadius: 999,
-                    backgroundColor: '#20232d',
-                    borderWidth: 1,
-                    borderColor: '#2d3543',
-                    paddingHorizontal: 10,
-                    paddingVertical: 6,
-                  }}
-                >
-                  <Text selectable style={{ color: '#a7d7ff', fontWeight: '700', fontSize: 12 }}>
-                    P {currentCard.macros.protein}g
-                  </Text>
-                </View>
-                <View
-                  style={{
-                    borderRadius: 999,
-                    backgroundColor: '#29251d',
-                    borderWidth: 1,
-                    borderColor: '#413728',
-                    paddingHorizontal: 10,
-                    paddingVertical: 6,
-                  }}
-                >
-                  <Text selectable style={{ color: '#f5d08c', fontWeight: '700', fontSize: 12 }}>
-                    C {currentCard.macros.carbs}g
-                  </Text>
-                </View>
-                <View
-                  style={{
-                    borderRadius: 999,
-                    backgroundColor: '#2d2028',
-                    borderWidth: 1,
-                    borderColor: '#4a303d',
-                    paddingHorizontal: 10,
-                    paddingVertical: 6,
-                  }}
-                >
-                  <Text selectable style={{ color: '#ffbfd7', fontWeight: '700', fontSize: 12 }}>
-                    F {currentCard.macros.fats}g
-                  </Text>
-                </View>
-              </View>
-              <Text selectable style={{ color: '#8f8f98' }}>
-                Uses: {currentCard.ingredients.map((item) => item.name).join(', ')}
-              </Text>
+                <Text selectable style={{ color: '#8f8f98' }}>
+                  Uses: {currentCard.ingredients.map((item) => item.name).join(', ')}
+                </Text>
             </Animated.View>
 
             {showSwipeTutorial ? (
@@ -1075,26 +1076,27 @@ export default function GenerateScreen() {
                 ? 'All cards are swiped. Generate another deck with your latest inventory.'
                 : 'Set your macros and generate your first swipe deck.'}
             </Text>
-            <Pressable
-              onPress={() => setMacroSheetVisible(true)}
-              style={{
-                borderRadius: 12,
-                borderWidth: 1,
-                borderColor: '#2f2f3d',
-                backgroundColor: '#191924',
-                paddingVertical: 12,
-                paddingHorizontal: 16,
-              }}
-            >
-              <Text selectable style={{ color: '#f4f4f4', fontWeight: '700' }}>
-                {hasDeckItems ? 'Generate new deck' : 'Set macros'}
-              </Text>
-            </Pressable>
           </View>
         )}
       </View>
 
-      <View style={{ paddingBottom: 4 }}>
+      <View style={{ paddingBottom: 4, gap: 10 }}>
+        <Pressable
+          disabled={submitting}
+          onPress={() => setMacroSheetVisible(true)}
+          style={{
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: '#2f2f3d',
+            backgroundColor: submitting ? '#1f1f2a' : '#161620',
+            paddingVertical: 11,
+            alignItems: 'center',
+          }}
+        >
+          <Text selectable style={{ color: '#e2e2ea', fontWeight: '700' }}>
+            Change macros
+          </Text>
+        </Pressable>
         <Pressable
           disabled={submitting || ingredientsLoading}
           onPress={handleGenerate}
@@ -1146,7 +1148,11 @@ export default function GenerateScreen() {
             }}
             style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 }}
           />
-          <View style={{ justifyContent: 'flex-end', paddingBottom: keyboardInset }}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'position' : 'height'}
+            keyboardVerticalOffset={0}
+            style={{ flex: 1, justifyContent: 'flex-end' }}
+          >
             <Pressable
               onPress={(event) => {
                 event.stopPropagation();
@@ -1157,13 +1163,18 @@ export default function GenerateScreen() {
                 backgroundColor: '#0f0f14',
                 borderTopLeftRadius: 18,
                 borderTopRightRadius: 18,
-                maxHeight: '88%',
+                maxHeight: macroSheetHeight,
+                overflow: 'hidden',
               }}
             >
               <ScrollView
-                contentInsetAdjustmentBehavior="automatic"
                 keyboardShouldPersistTaps="handled"
-                contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 12 }}
+                automaticallyAdjustKeyboardInsets={false}
+                contentContainerStyle={{
+                  padding: 16,
+                  gap: 12,
+                  paddingBottom: macroScrollBottomPadding,
+                }}
               >
                 <Text selectable style={{ color: '#f4f4f4', fontWeight: '700', fontSize: 22 }}>
                   {hasDeckItems ? 'Adjust macros' : 'Set macros'}
@@ -1174,30 +1185,37 @@ export default function GenerateScreen() {
                     : 'Pick your macro target and generate your first swipe deck.'}
                 </Text>
 
-                {renderNumberField('Protein target', proteinInput, 'g', setProteinInput, () =>
-                  commitField(proteinInput, protein, 20, 300, setProtein, setProteinInput)
-                )}
-                {renderNumberField('Carbs target', carbsInput, 'g', setCarbsInput, () =>
-                  commitField(carbsInput, carbs, 20, 400, setCarbs, setCarbsInput)
-                )}
-                {renderNumberField('Fats target', fatsInput, 'g', setFatsInput, () =>
-                  commitField(fatsInput, fats, 10, 150, setFats, setFatsInput)
-                )}
-                {renderNumberField('Prep time limit', timeInput, 'min', setTimeInput, () =>
-                  commitField(timeInput, timeLimit, 10, 90, setTimeLimit, setTimeInput)
-                )}
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: macroGridGap }}>
+                  {renderNumberField('Protein target', proteinInput, 'g', setProteinInput, () =>
+                    commitField(proteinInput, protein, 20, 300, setProtein, setProteinInput), true
+                  )}
+                  {renderNumberField('Carbs target', carbsInput, 'g', setCarbsInput, () =>
+                    commitField(carbsInput, carbs, 20, 400, setCarbs, setCarbsInput), true
+                  )}
+                  {renderNumberField('Fats target', fatsInput, 'g', setFatsInput, () =>
+                    commitField(fatsInput, fats, 10, 150, setFats, setFatsInput), true
+                  )}
+                  {renderNumberField('Prep time limit', timeInput, 'min', setTimeInput, () =>
+                    commitField(timeInput, timeLimit, 10, 90, setTimeLimit, setTimeInput), true
+                  )}
+                </View>
 
                 <Text selectable style={{ color: '#8f8f98', fontSize: 12 }}>
                   Available ingredients: {availableIngredientNames.length}. Save inventory changes before generating.
                 </Text>
               </ScrollView>
               <View
+                onLayout={(event) => {
+                  const nextHeight = Math.round(event.nativeEvent.layout.height);
+                  if (nextHeight === macroFooterHeight) return;
+                  setMacroFooterHeight(nextHeight);
+                }}
                 style={{
                   borderTopWidth: 1,
                   borderTopColor: '#252530',
                   paddingHorizontal: 16,
                   paddingTop: 12,
-                  paddingBottom: 16,
+                  paddingBottom: MACRO_SHEET_FOOTER_BOTTOM_PADDING,
                 }}
               >
                 <Pressable
@@ -1223,34 +1241,9 @@ export default function GenerateScreen() {
                 </Pressable>
               </View>
             </Pressable>
-          </View>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
-      {Platform.OS === 'ios' ? (
-        <InputAccessoryView nativeID={MACRO_INPUT_ACCESSORY_ID}>
-          <View
-            style={{
-              backgroundColor: '#14141c',
-              borderTopWidth: 1,
-              borderTopColor: '#2f2f3d',
-              paddingHorizontal: 14,
-              paddingVertical: 10,
-              alignItems: 'flex-end',
-            }}
-          >
-            <Pressable
-              onPress={() => {
-                commitInputs();
-                Keyboard.dismiss();
-              }}
-            >
-              <Text selectable style={{ color: '#9ec7ff', fontWeight: '700', fontSize: 16 }}>
-                Done
-              </Text>
-            </Pressable>
-          </View>
-        </InputAccessoryView>
-      ) : null}
     </View>
   );
 }

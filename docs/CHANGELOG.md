@@ -1,5 +1,31 @@
 # Changelog
 
+## 2026-02-14
+- Fixed the `Adjust macros` keyboard-open spacing regression by disabling `ScrollView` automatic keyboard inset adjustment in the modal (`automaticallyAdjustKeyboardInsets={false}`), avoiding double inset with `KeyboardAvoidingView`.
+- Removed fixed-height sizing from the `Adjust macros` sheet container and stopped forcing `ScrollView` to fill available space, so the modal now wraps content and eliminates the remaining large blank area below `Available ingredients`.
+- Removed remaining empty space below `Available ingredients` in the `Adjust macros` modal by dropping `ScrollView` content `flexGrow` and using a minimal fixed bottom inset (`12`) instead of footer-height-based padding.
+- Reverted `Generate` swipe handling from worklets (`react-native-gesture-handler` `GestureDetector` + Reanimated shared values) back to React Native `Animated + PanResponder` to fix runtime crashes caused by a JS/native worklets mismatch in the current client environment.
+- Improved app responsiveness in two hot paths: moved `Generate` swipe handling to `react-native-gesture-handler` + Reanimated shared values/worklets (UI-thread drag updates), and replaced Inventory's per-item availability save loop with a single batched `user_ingredients` upsert.
+- Hardened `Adjust macros` sheet sizing on `Generate` by replacing percentage-based sheet heights with a numeric height computed from `useWindowDimensions`, addressing cases where the modal resolved to footer-only content.
+- Fixed `Adjust macros` modal collapse on `Generate`: the sheet now uses a full-height `KeyboardAvoidingView` container plus explicit sheet height so macro fields remain visible instead of collapsing to a footer-only `Done` row on some devices.
+- Ran `context-agents-hi` project-context sync again: reviewed `AGENTS.md` plus all current `docs/*.md`, and logged Agent 731 ACTIVE/DONE scope ownership in `docs/COLLABORATION.md`.
+- Finalized `Adjust macros` sheet layout with a sheet-only `KeyboardAvoidingView` (`position` on iOS), enabled iOS scroll keyboard inset adjustment, and normalized footer bottom padding to a fixed value to remove residual dead space while keeping the persistent `Done` action visible.
+- Added `docs/COLLABORATION.md` and logged Agent 349 ACTIVE/DONE scope tracking for `context-agents-hi` project-context synchronization.
+- Rebuilt `Adjust macros` sheet keyboard behavior to a single-layout model: wrapped modal content in `KeyboardAvoidingView`, removed forced sheet min-height, kept `Done` as a fixed footer, and added footer-height-aware scroll bottom padding so inputs remain visible while the quick-exit button stays pinned across screen sizes.
+- Simplified `Adjust macros` keyboard handling by removing iOS `InputAccessoryView`, modal keyboard-lift listeners, dynamic sheet bottom offsets, and automatic scroll-view inset adjustment; the sheet now uses fixed layout/padding to avoid accessory-reserved gap behavior.
+- Reworked `Adjust macros` keyboard avoidance to use measured modal viewport overlap (`keyboard screenY` vs modal height) instead of raw keyboard height offsets, preventing iOS double-lift gaps on devices where the modal already resizes with the keyboard.
+- Fixed `Adjust macros` keyboard spacing by replacing hardcoded iOS sheet lift offsets with safe-area-aware keyboard insets and reducing footer bottom padding while typing, removing the visible gap above the number pad.
+- Tuned iOS `Adjust macros` keyboard lift offset downward so the sheet stays closer to the keyboard and avoids oversized vertical gaps while editing numeric fields.
+- Removed residual empty space under the `Adjust macros` footer by switching the sheet body to flex layout (`ScrollView` with `flex: 1` + `flexGrow`) so taller sheet height is filled by content area instead of leaving a bottom gap.
+- Fixed `Adjust macros` bottom-sheet dead-space gaps by refining keyboard inset handling (prefer keyboard height, apply a smaller iOS offset, and reset inset when the sheet closes) while preserving the taller sheet layout.
+- Increased `Adjust macros` bottom-sheet vertical capacity (higher max-height + new min-height) with responsive sizing so macro tiles and helper copy do not feel clipped on smaller devices.
+- Made the `Adjust macros` 2x2 grid responsive across device sizes by scaling tile spacing/height/value typography with screen width and switching to a single-column layout on very narrow screens.
+- Updated the `Adjust macros` sheet form to a compact 2x2 square-card grid (protein, carbs, fats, prep time) for better screen-space use and easier one-handed editing.
+- Simplified `Generate` action hierarchy by removing the duplicate in-card `Generate new deck` CTA shown at deck completion; deck states now rely on a single primary bottom generate/regenerate/sync action.
+- Moved `Change macros` from the top header into the bottom action area as a reachable secondary action above the primary generate CTA.
+- Improved `Generate` swipe responsiveness by making card progression optimistic: advancing to the next card immediately on release and moving Supabase swipe logging to a non-blocking post-interaction sync path.
+- Reduced swipe-release latency with native-driven off-screen/reset animations and added velocity-based flick detection so quick left/right gestures commit without requiring long drag distance.
+
 ## 2026-02-13
 - Replaced bottom-tab selector glyphs with explicit Ionicons for all tabs (`Generate`, `Inventory`, `Saved`, `Profile`) using filled/outline active states for cleaner navigation visuals.
 - Updated Step 3 (cooking level) finish flow to wait until questionnaire completion state is readable before navigating to tabs, preventing brief duplicate return-to-step animations.
